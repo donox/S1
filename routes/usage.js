@@ -1,0 +1,158 @@
+const { Router } = require('express');
+const db = require('../db/db');
+
+const router = Router();
+
+router.get('/', (req, res) => {
+  try {
+    let sql = `
+      SELECT u.*, p.name AS project_name_resolved
+      FROM usage_log u
+      LEFT JOIN projects p ON p.id = u.project_id
+      WHERE 1=1`;
+    const params = [];
+    if (req.query.from)       { sql += ' AND u.job_date >= ?';   params.push(req.query.from); }
+    if (req.query.to)         { sql += ' AND u.job_date <= ?';   params.push(req.query.to); }
+    if (req.query.outcome)    { sql += ' AND u.outcome = ?';     params.push(req.query.outcome); }
+    if (req.query.status)     { sql += ' AND u.status = ?';      params.push(req.query.status); }
+    if (req.query.project_id) { sql += ' AND u.project_id = ?';  params.push(req.query.project_id); }
+    sql += ' ORDER BY u.job_date DESC, u.id DESC';
+    res.json(db.prepare(sql).all(...params));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/:id', (req, res) => {
+  try {
+    const row = db.prepare(`
+      SELECT u.*, p.name AS project_name_resolved
+      FROM usage_log u
+      LEFT JOIN projects p ON p.id = u.project_id
+      WHERE u.id = ?
+    `).get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json(row);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Start a new in-progress session
+router.post('/start', (req, res) => {
+  try {
+    const { project_id, material, operation, setting_id, file_used, notes } = req.body;
+    const today = new Date().toISOString().slice(0, 10);
+    const info = db.prepare(`
+      INSERT INTO usage_log
+        (project_id, session_type, status, job_date, material, operation, setting_id, file_used, notes, started_at)
+      VALUES (?, 'laser', 'in_progress', ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).run(project_id ?? null, today, material ?? null, operation ?? null,
+           setting_id ?? null, file_used ?? null, notes ?? null);
+    res.status(201).json(db.prepare(`
+      SELECT u.*, p.name AS project_name_resolved FROM usage_log u
+      LEFT JOIN projects p ON p.id = u.project_id WHERE u.id = ?
+    `).get(info.lastInsertRowid));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/', (req, res) => {
+  try {
+    const { project_id, job_date, material, operation, project_name, duration_min,
+            file_used, setting_id, outcome, notes } = req.body;
+    if (!job_date) return res.status(400).json({ error: 'job_date is required' });
+    const allowedStatus = ['planned','in_progress','completed'];
+    const resolvedStatus = allowedStatus.includes(req.body.status) ? req.body.status : 'completed';
+    const info = db.prepare(`
+      INSERT INTO usage_log
+        (project_id, session_type, status, job_date, material, operation, project_name,
+         duration_min, file_used, setting_id, outcome, notes)
+      VALUES (?, 'laser', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(project_id ?? null, resolvedStatus, job_date, material ?? null, operation ?? null,
+           project_name ?? null, duration_min ?? null, file_used ?? null,
+           setting_id ?? null, outcome ?? null, notes ?? null);
+    res.status(201).json(db.prepare('SELECT * FROM usage_log WHERE id = ?').get(info.lastInsertRowid));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.put('/:id', (req, res) => {
+  try {
+    const row = db.prepare('SELECT * FROM usage_log WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    const fields = ['project_id','material','operation','project_name','duration_min',
+                    'file_used','setting_id','outcome','notes','job_date','status'];
+    const updates = [];
+    const values = [];
+    for (const f of fields) {
+      if (f in req.body) { updates.push(`${f} = ?`); values.push(req.body[f]); }
+    }
+    if (!updates.length) return res.status(400).json({ error: 'No fields to update' });
+    values.push(req.params.id);
+    db.prepare(`UPDATE usage_log SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    res.json(db.prepare('SELECT * FROM usage_log WHERE id = ?').get(req.params.id));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Begin a planned session (planned → in_progress)
+router.put('/:id/begin', (req, res) => {
+  try {
+    const row = db.prepare('SELECT status FROM usage_log WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    if (row.status !== 'planned') return res.status(400).json({ error: 'Session is not in planned status' });
+    db.prepare("UPDATE usage_log SET status = 'in_progress', started_at = datetime('now') WHERE id = ?").run(req.params.id);
+    res.json(db.prepare('SELECT * FROM usage_log WHERE id = ?').get(req.params.id));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Complete a session
+router.put('/:id/complete', (req, res) => {
+  try {
+    const { outcome, notes, duration_min } = req.body;
+    const row = db.prepare('SELECT * FROM usage_log WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+
+    const updates = ["status = 'completed'", "ended_at = datetime('now')"];
+    const values = [];
+    if (outcome)      { updates.push('outcome = ?');      values.push(outcome); }
+    if (notes)        { updates.push('notes = ?');        values.push(notes); }
+    if (duration_min) { updates.push('duration_min = ?'); values.push(duration_min); }
+    values.push(req.params.id);
+    db.prepare(`UPDATE usage_log SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    res.json(db.prepare('SELECT * FROM usage_log WHERE id = ?').get(req.params.id));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Abort a session
+router.put('/:id/abort', (req, res) => {
+  try {
+    const info = db.prepare(
+      "UPDATE usage_log SET status = 'aborted', ended_at = datetime('now') WHERE id = ?"
+    ).run(req.params.id);
+    if (!info.changes) return res.status(404).json({ error: 'Not found' });
+    res.json(db.prepare('SELECT * FROM usage_log WHERE id = ?').get(req.params.id));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/:id', (req, res) => {
+  try {
+    const info = db.prepare('DELETE FROM usage_log WHERE id = ?').run(req.params.id);
+    if (!info.changes) return res.status(404).json({ error: 'Not found' });
+    res.json({ deleted: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+module.exports = router;

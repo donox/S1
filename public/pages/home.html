@@ -1,0 +1,32 @@
+<h1>xTool S1 — Home</h1>
+
+<div class="warning-box" style="font-size:0.95rem">
+  ⛔ <strong>NEVER laser PVC, vinyl, or any chlorine-containing material.</strong>
+  <a href="/reference" data-page="reference" id="home-ref-link" style="color:var(--accent2);margin-left:8px">→ Full Safety Checklist</a>
+</div>
+
+<!-- Quick nav cards -->
+<div id="home-nav" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:28px"></div>
+
+<!-- ── Session context ───────────────────────────────────────────── -->
+<h2>Current Session</h2>
+<div id="session-context">
+  <p class="loading">Checking for active session…</p>
+</div>
+
+<!-- ── Active projects ────────────────────────────────────────────── -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 8px">
+  <h2 style="margin:0">Active Projects</h2>
+  <button class="btn btn-secondary btn-sm" id="btn-quick-project">+ New Project</button>
+</div>
+<div id="quick-project-form"></div>
+<div id="home-projects"></div>
+
+<!-- Recent sessions -->
+<h2 style="margin-top:24px">Recent Sessions</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Project</th><th>Material</th><th>Op</th><th>Outcome</th></tr></thead>
+    <tbody id="recent-sessions"></tbody>
+  </table>
+</div>

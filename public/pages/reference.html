@@ -1,0 +1,85 @@
+<h1>Quick Reference</h1>
+<p style="color:var(--text-muted);margin-bottom:20px;font-size:0.875rem">Print-friendly — sidebar hidden in print mode.</p>
+
+<div class="warning-box" style="font-size:0.9rem">
+  ⛔ <strong>NEVER laser:</strong> PVC, vinyl, or any chlorine-containing material. Releases toxic gas. Check material before use.
+</div>
+
+<div class="card">
+  <div class="card-title">Pre-Job Safety Checklist</div>
+  <ul style="margin-top:8px;padding-left:18px;font-size:0.875rem;line-height:2">
+    <li>Ventilation running / window open</li>
+    <li>Material confirmed — <strong>no PVC or vinyl</strong></li>
+    <li>Auto-focus run (or manual focus set)</li>
+    <li>Red cross alignment verified on workpiece</li>
+    <li>Lid closed / enclosure secured</li>
+    <li>Fire extinguisher within reach</li>
+    <li>Do not leave machine unattended during run</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-title">Operation Mode Guide</div>
+  <table style="margin-top:8px;font-size:0.875rem">
+    <thead><tr><th>Mode</th><th>Path type</th><th>Typical use</th><th>Speed</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Score</strong></td><td>Vector</td><td>Fine lines, outlines, detail paths</td><td>Fast</td></tr>
+      <tr><td><strong>Engrave</strong></td><td>Raster</td><td>Fill areas, photographs, tone</td><td>Slow</td></tr>
+      <tr><td><strong>Cut</strong></td><td>Vector</td><td>Sever material completely</td><td>Very slow, multi-pass</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:10px;font-size:0.8rem;color:var(--text-muted)">
+    Decision: vector line art → Score. Filled area / photo → Engrave. Through-cut → Cut.
+  </p>
+</div>
+
+<div class="card">
+  <div class="card-title">AI → GIMP → Inkscape → Laser Workflow</div>
+  <ol style="margin-top:8px;padding-left:18px;font-size:0.875rem;line-height:2">
+    <li><strong>AI</strong> — generate or source image</li>
+    <li><strong>GIMP</strong> — adjust contrast, greyscale, clean noise → export PNG</li>
+    <li><strong>Inkscape</strong> — Path › Trace Bitmap → simplify → export SVG</li>
+    <li><strong>XCS / LightBurn</strong> — import SVG, set parameters, run</li>
+  </ol>
+  <p style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">
+    File naming: <code>ProjectName_Stage_Version_Date.ext</code><br>
+    e.g. <code>FlowerDesign_Vector_V2_230424.svg</code>
+  </p>
+</div>
+
+<div class="card">
+  <div class="card-title">Inlay Painting Steps</div>
+  <ol style="margin-top:8px;padding-left:18px;font-size:0.875rem;line-height:2">
+    <li>Engrave design to desired depth</li>
+    <li>Apply acrylic paint into recessed areas</li>
+    <li>Let dry fully</li>
+    <li>Sand flush with surface (fine grit)</li>
+    <li>Repeat for additional colours with masking</li>
+    <li>Apply clear coat to protect inlay</li>
+  </ol>
+</div>
+
+<div class="card">
+  <div class="card-title">Material Test Procedure</div>
+  <ol style="margin-top:8px;padding-left:18px;font-size:0.875rem;line-height:2">
+    <li>Use XCS Material Test Array feature (or manually set up a grid)</li>
+    <li>Set a range of power (e.g. 30–80%) and speed (e.g. 200–400 mm/min)</li>
+    <li>Run array on scrap of target material</li>
+    <li>Identify best result — note power, speed, LPI, passes</li>
+    <li>Record in Settings database with ★ starred</li>
+  </ol>
+</div>
+
+<div class="card">
+  <div class="card-title">Key Parameter Reference</div>
+  <table style="margin-top:8px;font-size:0.875rem">
+    <thead><tr><th>Param</th><th>Unit</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Power</td><td>0–100 %</td><td>% of max laser output</td></tr>
+      <tr><td>Speed</td><td>mm/min</td><td>Lower = slower = more energy = deeper</td></tr>
+      <tr><td>LPI</td><td>lines/inch</td><td>Raster density — higher = finer, slower</td></tr>
+      <tr><td>Passes</td><td>count</td><td>Re-traversals of same path</td></tr>
+      <tr><td>Focus offset</td><td>mm</td><td>Negative = closer to material (e.g. Baltic Birch cut: −2)</td></tr>
+    </tbody>
+  </table>
+</div>

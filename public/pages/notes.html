@@ -1,0 +1,35 @@
+<h1>Notes &amp; Learning Tracker</h1>
+
+<div class="inline-form" id="note-form">
+  <h2>Add Note</h2>
+  <div class="form-row">
+    <div style="flex:1"><label>Topic</label><input id="n-topic" type="text" placeholder="e.g. Wood engraving"></div>
+    <div><label>Status</label>
+      <select id="n-status">
+        <option value="note">Note</option>
+        <option value="question">Question</option>
+        <option value="try">Try This</option>
+        <option value="learned">Learned</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div style="flex:1"><label>Content</label><textarea id="n-content"></textarea></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary" id="n-save">Add</button>
+    <button class="btn btn-secondary" id="n-export">Export to Clipboard</button>
+  </div>
+</div>
+
+<div id="notes-banner"></div>
+
+<div class="tabs" id="notes-tabs">
+  <button class="tab-btn active" data-status="">All</button>
+  <button class="tab-btn" data-status="note">Notes</button>
+  <button class="tab-btn" data-status="question">Questions</button>
+  <button class="tab-btn" data-status="try">Try This</button>
+  <button class="tab-btn" data-status="learned">Learned</button>
+</div>
+
+<div id="notes-list"></div>

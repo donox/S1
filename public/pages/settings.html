@@ -1,0 +1,32 @@
+<h1>Material Settings</h1>
+
+<div class="warning-box">⚠ Never laser PVC, vinyl, or chlorine-containing materials — toxic gases.</div>
+
+<div class="filter-bar" id="settings-filters">
+  <div>
+    <label>Material</label>
+    <select id="filter-material"><option value="">All</option></select>
+  </div>
+  <div>
+    <label>Operation</label>
+    <select id="filter-operation">
+      <option value="">All</option>
+      <option value="engrave">Engrave</option>
+      <option value="score">Score</option>
+      <option value="cut">Cut</option>
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;padding-bottom:2px">
+    <input type="checkbox" id="filter-archived">
+    <label for="filter-archived" style="margin:0">Show archived</label>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;padding-bottom:2px">
+    <input type="checkbox" id="view-summary" checked>
+    <label for="view-summary" style="margin:0">Summary view</label>
+  </div>
+  <button class="btn btn-secondary btn-sm" id="btn-filter">Filter</button>
+  <button class="btn btn-primary btn-sm" id="btn-new-setting">+ New</button>
+</div>
+
+<div id="setting-form-wrap"></div>
+<div id="settings-content"></div>

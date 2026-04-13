@@ -1,0 +1,100 @@
+<h1>Sessions</h1>
+
+<!-- Active session card (shown when a session is in_progress) -->
+<div id="active-session-wrap"></div>
+
+<!-- Start session form (hidden until JS confirms no active session) -->
+<div id="start-session-wrap" style="display:none">
+  <div style="border:2px solid var(--accent);border-radius:var(--radius);padding:20px;margin-bottom:28px;background:var(--surface)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <span style="color:var(--accent);font-size:1.2rem">▶</span>
+      <h2 style="margin:0;color:var(--accent)">Start a New Session</h2>
+    </div>
+    <div class="form-row">
+      <div style="flex:1">
+        <label>Project <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+        <select id="ss-project"><option value="">— Standalone session —</option></select>
+      </div>
+      <div>
+        <label>Material ⚠ <span style="font-weight:400;font-size:0.75rem;color:var(--text-muted)">Never PVC/vinyl</span></label>
+        <input id="ss-material" type="text" placeholder="e.g. Walnut" style="min-width:130px">
+      </div>
+      <div>
+        <label>Operation</label>
+        <select id="ss-operation">
+          <option value="">—</option>
+          <option value="engrave">Engrave</option>
+          <option value="score">Score</option>
+          <option value="cut">Cut</option>
+          <option value="mixed">Mixed</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <label>Setting <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+        <select id="ss-setting"><option value="">—</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div style="flex:1">
+        <label>Design file <span style="font-weight:400;color:var(--text-muted)">— the XCS/LightBurn file you'll use</span></label>
+        <input id="ss-file" type="text" placeholder="e.g. FlowerDesign_V2_230424.svg">
+      </div>
+    </div>
+    <button class="btn btn-primary" id="btn-start-session">▶ Start Session Now</button>
+  </div>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-top:4px">
+  <h2 style="margin:0">Past Sessions</h2>
+  <div style="flex:1;height:1px;background:var(--border)"></div>
+</div>
+
+<div id="sessions-banner"></div>
+
+<!-- Past sessions filter + table -->
+<div class="filter-bar" style="margin-bottom:16px">
+  <div>
+    <label>From</label><input id="sf-from" type="date">
+  </div>
+  <div>
+    <label>To</label><input id="sf-to" type="date">
+  </div>
+  <div>
+    <label>Status</label>
+    <select id="sf-status">
+      <option value="">All</option>
+      <option value="planned">Planned</option>
+      <option value="in_progress">In Progress</option>
+      <option value="completed">Completed</option>
+      <option value="aborted">Aborted</option>
+    </select>
+  </div>
+  <div>
+    <label>Outcome</label>
+    <select id="sf-outcome">
+      <option value="">All</option>
+      <option value="success">Success</option>
+      <option value="partial">Partial</option>
+      <option value="failed">Failed</option>
+    </select>
+  </div>
+  <div>
+    <label>Project</label>
+    <select id="sf-project"><option value="">All Projects</option></select>
+  </div>
+  <button class="btn btn-secondary btn-sm" id="btn-filter-sessions">Filter</button>
+</div>
+
+<div class="stats-strip" id="session-stats"></div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Project</th><th>Material</th><th>Op</th><th>Duration</th><th>Outcome</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody id="sessions-body"></tbody>
+  </table>
+</div>
+
+<!-- Session detail / post-session review (shown inline below table row) -->
+<div id="session-detail-wrap"></div>
