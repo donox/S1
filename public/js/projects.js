@@ -4,6 +4,8 @@ window.projectsInit = async function () {
   const banner    = document.getElementById('projects-banner');
   const statusSel = document.getElementById('proj-status-filter');
 
+  let cachedUsers = [];
+
   const MILESTONE_LABELS = {
     design:            'Design complete',
     material_acquired: 'Material acquired',
@@ -42,6 +44,7 @@ window.projectsInit = async function () {
     const m = project?.milestones
       ? (typeof project.milestones === 'string' ? JSON.parse(project.milestones) : project.milestones)
       : {};
+    const defaultUserId = cachedUsers.find(u => u.is_default)?.id ?? '';
 
     formWrap.innerHTML = `
       <div class="inline-form" style="margin-bottom:20px">
@@ -55,6 +58,11 @@ window.projectsInit = async function () {
               <option value="paused"    ${project?.status==='paused'   ?'selected':''}>Paused</option>
               <option value="complete"  ${project?.status==='complete' ?'selected':''}>Complete</option>
               <option value="abandoned" ${project?.status==='abandoned'?'selected':''}>Abandoned</option>
+            </select></div>
+          <div><label>Owner</label>
+            <select id="pf-owner">
+              <option value="">— None —</option>
+              ${cachedUsers.map(u => `<option value="${u.id}" ${(project?.owner_id ?? defaultUserId) == u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
             </select></div>
         </div>
         <div class="form-row">
@@ -96,9 +104,10 @@ window.projectsInit = async function () {
     document.getElementById('pf-cancel').onclick = () => { closeForm(); };
     document.getElementById('pf-save').onclick = async () => {
       const payload = {
-        name:   document.getElementById('pf-name').value.trim(),
-        goal:   document.getElementById('pf-goal').value.trim() || null,
-        status: document.getElementById('pf-status').value,
+        name:     document.getElementById('pf-name').value.trim(),
+        goal:     document.getElementById('pf-goal').value.trim() || null,
+        status:   document.getElementById('pf-status').value,
+        owner_id: +document.getElementById('pf-owner').value || null,
       };
       if (!payload.name) { showBanner('Name is required.'); return; }
 
@@ -156,6 +165,7 @@ window.projectsInit = async function () {
                   <span class="badge" style="color:${STATUS_COLOR[p.status]}">${p.status}</span>
                 </div>
                 ${p.goal ? `<div style="color:var(--text-muted);font-size:0.85rem;margin-top:4px">${p.goal}</div>` : ''}
+                ${p.owner_name ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">Owner: ${p.owner_name}</div>` : ''}
                 <div style="margin-top:10px">
                   <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">
                     Milestones: ${prog.done}/${prog.total}
@@ -230,6 +240,8 @@ window.projectsInit = async function () {
       detailEl.innerHTML = `<div class="banner banner-error">${e.message}</div>`;
     }
   }
+
+  try { cachedUsers = await apiFetch('/api/users'); } catch (_) { cachedUsers = []; }
 
   document.getElementById('btn-new-project').onclick = () => renderForm();
   statusSel.addEventListener('change', loadData);

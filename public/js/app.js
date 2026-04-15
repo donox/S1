@@ -6,6 +6,7 @@ const PAGES = {
   docs:      { partial: '/pages/docs.html',        module: '/js/docs.js'      },
   notes:     { partial: '/pages/notes.html',       module: '/js/notes.js'     },
   files:     { partial: '/pages/files.html',       module: '/js/files.js'     },
+  users:     { partial: '/pages/users.html',       module: '/js/users.js'     },
   reference: { partial: '/pages/reference.html',   module: null               },
 };
 

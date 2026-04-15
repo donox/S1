@@ -107,3 +107,16 @@ CREATE TABLE IF NOT EXISTS project_files (
   notes        TEXT,
   last_scanned TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS users (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT NOT NULL UNIQUE,
+  is_default INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS session_users (
+  session_id INTEGER NOT NULL REFERENCES usage_log(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+  PRIMARY KEY (session_id, user_id)
+);

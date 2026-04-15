@@ -36,10 +36,11 @@ window.sessionsInit = async function () {
 
   // ── Populate dropdowns ────────────────────────────────────────────
   async function populateDropdowns() {
-    const [projects, allProjects, settings] = await Promise.all([
+    const [projects, allProjects, settings, users] = await Promise.all([
       apiFetch('/api/projects?status=active'),
       apiFetch('/api/projects'),
       apiFetch('/api/settings'),
+      apiFetch('/api/users'),
     ]);
     const projSel = document.getElementById('ss-project');
     projects.forEach(p => {
@@ -60,6 +61,14 @@ window.sessionsInit = async function () {
       o.textContent = `${s.material} / ${s.operation} — ${s.power}% ${s.speed}mm/min${s.role==='confirmed' ? ' ✓' : ''}`;
       settingSel.appendChild(o);
     });
+    const userSel = document.getElementById('ss-user');
+    users.forEach(u => {
+      const o = document.createElement('option');
+      o.value = u.id;
+      o.textContent = u.name;
+      if (u.is_default) o.selected = true;
+      userSel.appendChild(o);
+    });
   }
 
   // ── Active session card ───────────────────────────────────────────
@@ -70,7 +79,7 @@ window.sessionsInit = async function () {
     const obs = await apiFetch(`/api/observations?session_id=${session.id}&dismissed=false`);
 
     activeWrap.innerHTML = `
-      <div class="card" style="border-color:var(--accent);margin-bottom:20px">
+      <div class="card active-session-card" style="margin-bottom:20px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
           <div>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
@@ -80,6 +89,7 @@ window.sessionsInit = async function () {
               ${session.operation ? `<span class="badge">${session.operation}</span>` : ''}
             </div>
             ${session.project_name_resolved ? `<div style="font-size:0.85rem;color:var(--text-muted)">Project: ${session.project_name_resolved}</div>` : ''}
+            ${session.user_name ? `<div style="font-size:0.85rem;color:var(--text-muted)">User: ${session.user_name}</div>` : ''}
             <div style="font-size:0.85rem;color:var(--text-muted)">
               Started: ${fmtTime(session.started_at)} &nbsp;·&nbsp;
               Elapsed: <span id="elapsed-display">${elapsed(session.started_at)}</span>
@@ -255,13 +265,17 @@ window.sessionsInit = async function () {
 
   async function showSessionDetail(sessionId) {
     detailWrap.innerHTML = '<p class="loading" style="margin-top:16px">Loading…</p>';
+    // Highlight the row this detail belongs to
+    document.querySelectorAll('#sessions-body tr').forEach(r => r.classList.remove('row-selected'));
+    document.querySelector(`#sessions-body tr[data-id="${sessionId}"]`)?.classList.add('row-selected');
     detailWrap.scrollIntoView({ behavior: 'smooth' });
 
     try {
-      const [session, projects, obs] = await Promise.all([
+      const [session, projects, obs, users] = await Promise.all([
         apiFetch(`/api/usage/${sessionId}`),
         apiFetch('/api/projects'),
         apiFetch(`/api/observations?session_id=${sessionId}`),
+        apiFetch('/api/users'),
       ]);
 
       const TYPE_COLOR = { note: 'var(--text-muted)', discovery: '#27ae60', issue: 'var(--accent)', question: 'var(--accent2)' };
@@ -269,14 +283,39 @@ window.sessionsInit = async function () {
       const dismissed   = obs.filter(o =>  o.dismissed_at);
 
       detailWrap.innerHTML = `
-        <div class="card" style="margin-top:16px;border-color:var(--accent2)">
+        <div class="card session-detail-card" style="margin-top:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
             <h2 style="margin:0">Session Detail — ${session.material ?? 'Unknown'} / ${session.operation ?? '—'} / ${session.job_date}</h2>
             <button class="btn btn-secondary btn-sm" id="close-detail">✕ Close</button>
           </div>
 
           <!-- Edit fields -->
-          <div class="form-row" style="margin-bottom:16px">
+          <div class="form-row" style="margin-bottom:10px">
+            <div>
+              <label>Date</label>
+              <input id="det-date" type="date" value="${session.job_date ?? ''}">
+            </div>
+            <div>
+              <label>Material ⚠ <span style="font-weight:400;font-size:0.75rem;color:var(--text-muted)">Never PVC/vinyl</span></label>
+              <input id="det-material" type="text" value="${session.material ?? ''}" placeholder="e.g. Walnut" style="min-width:120px">
+            </div>
+            <div>
+              <label>Operation</label>
+              <select id="det-operation">
+                <option value="">—</option>
+                <option value="engrave" ${session.operation==='engrave'?'selected':''}>Engrave</option>
+                <option value="score"   ${session.operation==='score'  ?'selected':''}>Score</option>
+                <option value="cut"     ${session.operation==='cut'    ?'selected':''}>Cut</option>
+                <option value="mixed"   ${session.operation==='mixed'  ?'selected':''}>Mixed</option>
+              </select>
+            </div>
+            <div>
+              <label>User</label>
+              <select id="det-user">
+                <option value="">— None —</option>
+                ${users.map(u => `<option value="${u.id}" ${u.id === session.user_id ? 'selected' : ''}>${u.name}</option>`).join('')}
+              </select>
+            </div>
             <div style="flex:1">
               <label>Project</label>
               <select id="det-project">
@@ -284,6 +323,8 @@ window.sessionsInit = async function () {
                 ${projects.map(p => `<option value="${p.id}" ${p.id === session.project_id ? 'selected' : ''}>${p.name} (${p.status})</option>`).join('')}
               </select>
             </div>
+          </div>
+          <div class="form-row" style="margin-bottom:16px">
             <div>
               <label>Outcome</label>
               <select id="det-outcome">
@@ -311,6 +352,22 @@ window.sessionsInit = async function () {
           <!-- Observations -->
           <div style="border-top:1px solid var(--border);padding-top:14px">
             <h3 style="margin-top:0">Observations (${undismissed.length} open${dismissed.length ? ', ' + dismissed.length + ' dismissed' : ''})</h3>
+
+            <!-- Add observation to any session (including completed) -->
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;
+                        padding:10px 12px;background:var(--surface2);border-radius:var(--radius)">
+              <select id="det-obs-type" style="flex-shrink:0;min-width:110px">
+                <option value="note">Note</option>
+                <option value="discovery">Discovery</option>
+                <option value="issue">Issue</option>
+                <option value="question">Question</option>
+              </select>
+              <input id="det-obs-input" type="text" style="flex:1;min-width:180px"
+                placeholder="Add an observation to this session…">
+              <button class="btn btn-primary btn-sm" id="det-add-obs" style="flex-shrink:0">Add</button>
+              <span id="det-obs-feedback" style="font-size:0.8rem;width:100%;min-height:1em"></span>
+            </div>
+
             <div id="review-obs-list">
               ${undismissed.length
                 ? undismissed.map(o => renderObsRow(o, TYPE_COLOR)).join('')
@@ -326,7 +383,53 @@ window.sessionsInit = async function () {
           </div>
         </div>`;
 
-      document.getElementById('close-detail').onclick = () => { detailWrap.innerHTML = ''; };
+      document.getElementById('close-detail').onclick = () => {
+        detailWrap.innerHTML = '';
+        document.querySelectorAll('#sessions-body tr').forEach(r => r.classList.remove('row-selected'));
+      };
+
+      // Add observation to this session
+      async function submitDetObs() {
+        const input   = document.getElementById('det-obs-input');
+        const content = input.value.trim();
+        const type    = document.getElementById('det-obs-type').value;
+        const fb      = document.getElementById('det-obs-feedback');
+        if (!content) {
+          input.style.borderColor = 'var(--accent)';
+          fb.textContent = 'Enter something first.';
+          fb.style.color = 'var(--accent)';
+          setTimeout(() => { input.style.borderColor = ''; fb.textContent = ''; }, 2500);
+          return;
+        }
+        const btn = document.getElementById('det-add-obs');
+        btn.disabled = true;
+        try {
+          await apiFetch('/api/observations', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ session_id: session.id, content, type }),
+          });
+          input.value = '';
+          fb.textContent = '✓ Added';
+          fb.style.color = 'var(--success)';
+          setTimeout(() => { fb.textContent = ''; }, 2000);
+          // Refresh just the observations list without full re-render
+          const updated = await apiFetch(`/api/observations?session_id=${session.id}`);
+          const fresh_undismissed = updated.filter(o => !o.dismissed_at);
+          const fresh_dismissed   = updated.filter(o =>  o.dismissed_at);
+          document.getElementById('review-obs-list').innerHTML = fresh_undismissed.length
+            ? fresh_undismissed.map(o => renderObsRow(o, TYPE_COLOR)).join('')
+            : '<p style="color:var(--text-muted);font-size:0.875rem">No open observations.</p>';
+        } catch (e) {
+          fb.textContent = 'Error: ' + e.message;
+          fb.style.color = 'var(--accent)';
+        } finally {
+          btn.disabled = false;
+        }
+      }
+      document.getElementById('det-add-obs').onclick = submitDetObs;
+      document.getElementById('det-obs-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') submitDetObs();
+      });
 
       document.getElementById('det-delete').onclick = async () => {
         if (!confirm(`Delete this session (${session.job_date} · ${session.material ?? 'no material'})? This cannot be undone.`)) return;
@@ -339,10 +442,14 @@ window.sessionsInit = async function () {
 
       document.getElementById('det-save').onclick = async () => {
         const payload = {
-          project_id:  +document.getElementById('det-project').value  || null,
-          outcome:     document.getElementById('det-outcome').value   || null,
-          duration_min:+document.getElementById('det-duration').value || null,
-          notes:       document.getElementById('det-notes').value.trim() || null,
+          job_date:    document.getElementById('det-date').value           || null,
+          material:    document.getElementById('det-material').value.trim()|| null,
+          operation:   document.getElementById('det-operation').value      || null,
+          user_id:    +document.getElementById('det-user').value           || null,
+          project_id: +document.getElementById('det-project').value        || null,
+          outcome:     document.getElementById('det-outcome').value        || null,
+          duration_min:+document.getElementById('det-duration').value      || null,
+          notes:       document.getElementById('det-notes').value.trim()   || null,
         };
         try {
           await apiFetch(`/api/usage/${session.id}`, {
@@ -362,21 +469,51 @@ window.sessionsInit = async function () {
       detailWrap.addEventListener('click', async e => {
         const id = e.target.dataset.id;
         if (!id) return;
+
         if (e.target.classList.contains('rev-dismiss')) {
           try {
             await apiFetch(`/api/observations/${id}/dismiss`, { method: 'PUT' });
             await showSessionDetail(sessionId);
           } catch (err) { showBanner(err.message); }
-        }
-        if (e.target.classList.contains('rev-promote-note')) {
-          const topic = prompt('Topic for learning note:', session.material ?? '');
-          if (!topic) return;
+
+        } else if (e.target.classList.contains('rev-promote-note')) {
+          // Expand an inline topic form inside the row — no browser prompt
+          const row = document.getElementById(`rev-obs-${id}`);
+          if (!row) return;
+          const actionsDiv = row.querySelector('.obs-actions');
+          if (!actionsDiv) return;
+          actionsDiv.innerHTML = `
+            <input id="promote-topic-${id}" type="text"
+              placeholder="Topic for note (e.g. Walnut engraving)"
+              style="font-size:0.825rem;padding:4px 8px;border:1px solid var(--border);
+                     background:var(--surface2);color:var(--text);border-radius:4px;width:220px">
+            <button class="btn btn-primary btn-sm promote-save" data-id="${id}">Save note</button>
+            <button class="btn btn-secondary btn-sm promote-cancel" data-id="${id}">✕</button>`;
+          document.getElementById(`promote-topic-${id}`)?.focus();
+
+          // Allow Enter key to save
+          document.getElementById(`promote-topic-${id}`)?.addEventListener('keydown', async ev => {
+            if (ev.key === 'Enter') {
+              ev.preventDefault();
+              document.querySelector(`.promote-save[data-id="${id}"]`)?.click();
+            }
+          });
+
+        } else if (e.target.classList.contains('promote-cancel')) {
+          await showSessionDetail(sessionId);
+
+        } else if (e.target.classList.contains('promote-save')) {
+          const topic = document.getElementById(`promote-topic-${id}`)?.value.trim();
+          if (!topic) {
+            const inp = document.getElementById(`promote-topic-${id}`);
+            if (inp) { inp.style.borderColor = 'var(--accent)'; inp.focus(); }
+            return;
+          }
           try {
             await apiFetch(`/api/observations/${id}/promote/note`, {
               method: 'POST', headers: {'Content-Type':'application/json'},
               body: JSON.stringify({ topic }),
             });
-            showBanner('Added to learning notes.', 'success');
             await showSessionDetail(sessionId);
           } catch (err) { showBanner(err.message); }
         }
@@ -396,7 +533,7 @@ window.sessionsInit = async function () {
           ${o.promoted_to ? `<span style="margin-left:8px;font-size:0.75rem;color:var(--success)">→ ${o.promoted_to.replace('_',' ')}</span>` : ''}
         </div>
         ${!isDismissed ? `
-          <div style="display:flex;gap:6px;flex-shrink:0">
+          <div class="obs-actions" style="display:flex;gap:6px;flex-shrink:0;align-items:center;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm rev-promote-note" data-id="${o.id}">→ Note</button>
             <button class="btn btn-secondary btn-sm rev-dismiss" data-id="${o.id}">Dismiss</button>
           </div>` : ''}
@@ -442,7 +579,7 @@ window.sessionsInit = async function () {
       const STATUS_BADGE  = { in_progress: '🔴 Active', completed: 'Done', aborted: 'Aborted', planned: 'Planned' };
 
       tbody.innerHTML = rows.map(r => `
-        <tr>
+        <tr data-id="${r.id}">
           <td>${r.job_date}</td>
           <td>${r.project_name_resolved ?? r.project_name ?? '—'}</td>
           <td>${r.material ?? '—'}</td>
@@ -451,7 +588,7 @@ window.sessionsInit = async function () {
           <td style="color:${OUTCOME_COLOR[r.outcome]??'inherit'}">${r.outcome ?? '—'}</td>
           <td><span class="badge">${STATUS_BADGE[r.status] ?? r.status}</span></td>
           <td>
-            <button class="btn btn-secondary btn-sm view-session" data-id="${r.id}">View</button>
+            <button class="btn btn-secondary btn-sm view-session" data-id="${r.id}">Edit</button>
             <button class="btn btn-danger btn-sm del-session" data-id="${r.id}">Del</button>
           </td>
         </tr>`).join('');
@@ -480,10 +617,11 @@ window.sessionsInit = async function () {
     const operation  = document.getElementById('ss-operation').value || null;
     const setting_id = +document.getElementById('ss-setting').value || null;
     const file_used  = document.getElementById('ss-file').value.trim() || null;
+    const user_id    = +document.getElementById('ss-user').value || null;
     try {
       await apiFetch('/api/usage/start', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ project_id, material, operation, setting_id, file_used }),
+        body: JSON.stringify({ project_id, material, operation, setting_id, file_used, user_id }),
       });
       await refresh();
     } catch (e) { showBanner(e.message); }

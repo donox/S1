@@ -18,6 +18,9 @@ const MIGRATIONS = [
   `ALTER TABLE usage_log ADD COLUMN status TEXT DEFAULT 'completed'`,
   `ALTER TABLE usage_log ADD COLUMN started_at TEXT`,
   `ALTER TABLE usage_log ADD COLUMN ended_at TEXT`,
+  // Phase 1 — users
+  `ALTER TABLE projects  ADD COLUMN owner_id INTEGER REFERENCES users(id)`,
+  `ALTER TABLE usage_log ADD COLUMN user_id  INTEGER REFERENCES users(id)`,
 ];
 
 for (const sql of MIGRATIONS) {

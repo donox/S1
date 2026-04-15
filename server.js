@@ -7,6 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use('/api/users',         require('./routes/users'));
 app.use('/api/projects',      require('./routes/projects'));
 app.use('/api/settings',      require('./routes/settings'));
 app.use('/api/usage',         require('./routes/usage'));

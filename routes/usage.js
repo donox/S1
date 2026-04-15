@@ -6,9 +6,10 @@ const router = Router();
 router.get('/', (req, res) => {
   try {
     let sql = `
-      SELECT u.*, p.name AS project_name_resolved
+      SELECT u.*, p.name AS project_name_resolved, usr.name AS user_name
       FROM usage_log u
-      LEFT JOIN projects p ON p.id = u.project_id
+      LEFT JOIN projects p  ON p.id   = u.project_id
+      LEFT JOIN users    usr ON usr.id = u.user_id
       WHERE 1=1`;
     const params = [];
     if (req.query.from)       { sql += ' AND u.job_date >= ?';   params.push(req.query.from); }
@@ -26,13 +27,19 @@ router.get('/', (req, res) => {
 router.get('/:id', (req, res) => {
   try {
     const row = db.prepare(`
-      SELECT u.*, p.name AS project_name_resolved
+      SELECT u.*, p.name AS project_name_resolved, usr.name AS user_name
       FROM usage_log u
-      LEFT JOIN projects p ON p.id = u.project_id
+      LEFT JOIN projects p  ON p.id   = u.project_id
+      LEFT JOIN users    usr ON usr.id = u.user_id
       WHERE u.id = ?
     `).get(req.params.id);
     if (!row) return res.status(404).json({ error: 'Not found' });
-    res.json(row);
+    const participants = db.prepare(`
+      SELECT usr.id, usr.name FROM session_users su
+      JOIN users usr ON usr.id = su.user_id
+      WHERE su.session_id = ?
+    `).all(req.params.id);
+    res.json({ ...row, participants });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -41,17 +48,29 @@ router.get('/:id', (req, res) => {
 // Start a new in-progress session
 router.post('/start', (req, res) => {
   try {
-    const { project_id, material, operation, setting_id, file_used, notes } = req.body;
+    const { project_id, material, operation, setting_id, file_used, notes, user_id } = req.body;
     const today = new Date().toISOString().slice(0, 10);
-    const info = db.prepare(`
-      INSERT INTO usage_log
-        (project_id, session_type, status, job_date, material, operation, setting_id, file_used, notes, started_at)
-      VALUES (?, 'laser', 'in_progress', ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(project_id ?? null, today, material ?? null, operation ?? null,
-           setting_id ?? null, file_used ?? null, notes ?? null);
+    const create = db.transaction(() => {
+      const info = db.prepare(`
+        INSERT INTO usage_log
+          (project_id, session_type, status, job_date, material, operation,
+           setting_id, file_used, notes, user_id, started_at)
+        VALUES (?, 'laser', 'in_progress', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `).run(project_id ?? null, today, material ?? null, operation ?? null,
+             setting_id ?? null, file_used ?? null, notes ?? null, user_id ?? null);
+      if (user_id) {
+        db.prepare('INSERT OR IGNORE INTO session_users (session_id, user_id) VALUES (?, ?)')
+          .run(info.lastInsertRowid, user_id);
+      }
+      return info;
+    });
+    const info = create();
     res.status(201).json(db.prepare(`
-      SELECT u.*, p.name AS project_name_resolved FROM usage_log u
-      LEFT JOIN projects p ON p.id = u.project_id WHERE u.id = ?
+      SELECT u.*, p.name AS project_name_resolved, usr.name AS user_name
+      FROM usage_log u
+      LEFT JOIN projects p   ON p.id   = u.project_id
+      LEFT JOIN users    usr ON usr.id  = u.user_id
+      WHERE u.id = ?
     `).get(info.lastInsertRowid));
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -84,7 +103,7 @@ router.put('/:id', (req, res) => {
     const row = db.prepare('SELECT * FROM usage_log WHERE id = ?').get(req.params.id);
     if (!row) return res.status(404).json({ error: 'Not found' });
     const fields = ['project_id','material','operation','project_name','duration_min',
-                    'file_used','setting_id','outcome','notes','job_date','status'];
+                    'file_used','setting_id','outcome','notes','job_date','status','user_id'];
     const updates = [];
     const values = [];
     for (const f of fields) {

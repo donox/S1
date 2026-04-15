@@ -1,0 +1,27 @@
+<h1>Users</h1>
+
+<div id="users-banner"></div>
+
+<div style="border:2px solid var(--accent);border-radius:var(--radius);padding:20px;margin-bottom:28px;background:var(--surface)">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+    <span style="color:var(--accent);font-size:1.2rem">+</span>
+    <h2 style="margin:0;color:var(--accent)">Add User</h2>
+  </div>
+  <div class="form-row" style="align-items:flex-end">
+    <div style="flex:1">
+      <label>Name</label>
+      <input id="nu-name" type="text" placeholder="e.g. Don">
+    </div>
+    <div>
+      <label style="display:flex;align-items:center;gap:6px">
+        <input id="nu-default" type="checkbox" style="accent-color:var(--accent)">
+        Set as default
+      </label>
+    </div>
+    <div>
+      <button class="btn btn-primary" id="btn-add-user">Add User</button>
+    </div>
+  </div>
+</div>
+
+<div id="users-list"></div>

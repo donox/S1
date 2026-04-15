@@ -3,6 +3,10 @@
 This file is the authoritative project reference for Claude Code.
 Read it fully before making any changes.
 
+**Also read `SKILL.md`** before making any changes. It captures domain rules,
+magic numbers, architecture assumptions, and repeated patterns that are not
+obvious from the code. CLAUDE.md describes *what* is built; SKILL.md explains *why*.
+
 ---
 
 ## Project overview
@@ -47,8 +51,9 @@ Use these exact version ranges. Do not upgrade without explicit instruction.
 ## Repository structure
 
 ```
-xtool-guide/
+Engraving/
 ├── CLAUDE.md                  ← this file
+├── SKILL.md                   ← domain rules, magic numbers, patterns (read this too)
 ├── .env                       ← local config (gitignored)
 ├── .env.example               ← committed template
 ├── .gitignore
@@ -57,10 +62,12 @@ xtool-guide/
 ├── db/
 │   ├── schema.sql             ← source-of-truth DDL
 │   ├── seed.js                ← one-time data import script
-│   └── db.js                  ← better-sqlite3 singleton
+│   └── db.js                  ← better-sqlite3 singleton + MIGRATIONS array
 ├── routes/
+│   ├── projects.js            ← /api/projects/*
+│   ├── sessions.js            ← /api/sessions/*
+│   ├── observations.js        ← /api/observations/*
 │   ├── settings.js            ← /api/settings/*
-│   ├── usage.js               ← /api/usage/*
 │   ├── docs.js                ← /api/docs/*
 │   ├── notes.js               ← /api/notes/*
 │   └── files.js               ← /api/files/*
@@ -70,14 +77,18 @@ xtool-guide/
 │   │   └── main.css
 │   ├── js/
 │   │   ├── app.js             ← router / nav logic
-│   │   ├── settings.js
-│   │   ├── usage.js
+│   │   ├── home.js            ← dashboard: active session, checklists, nav cards
+│   │   ├── sessions.js        ← session lifecycle + past sessions table
+│   │   ├── projects.js        ← project CRUD + milestone tracking
+│   │   ├── settings.js        ← material settings (candidate/confirmed/archived)
 │   │   ├── docs.js
 │   │   ├── notes.js
 │   │   └── files.js
 │   └── pages/
-│       ├── settings.html      ← partial HTML injected by app.js
-│       ├── usage.html
+│       ├── home.html          ← dashboard partial
+│       ├── sessions.html      ← sessions partial
+│       ├── projects.html      ← projects partial
+│       ├── settings.html
 │       ├── docs.html
 │       ├── notes.html
 │       ├── files.html
@@ -105,20 +116,10 @@ PROJECTS_DIR=./data/projects
 
 ### `db/db.js` — singleton
 
-`db.js` opens the SQLite database and applies the schema at startup:
-
-```js
-const Database = require('better-sqlite3');
-const fs = require('fs');
-const path = require('path');
-
-const db = new Database(process.env.DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
-
-module.exports = db;
-```
+`db.js` opens the SQLite database, applies the schema, then runs idempotent
+`ALTER TABLE` migrations at startup. Each migration is in a `MIGRATIONS` array
+wrapped in individual `try/catch` — SQLite throws if a column already exists;
+the catch ignores that. This makes migrations safe to re-run on every restart.
 
 `better-sqlite3` is **synchronous** — never `await` its calls. Always import
 this module; never open a second `Database` instance in a route file.
@@ -133,41 +134,88 @@ altering tables. The singleton executes it at every startup using
 
 **`material_settings`**
 Stores laser parameters. Each row is one tested combination.
+The `role` column was added via migration (not in original schema DDL).
 ```sql
 CREATE TABLE IF NOT EXISTS material_settings (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  material    TEXT NOT NULL,          -- e.g. "Walnut", "Black Acrylic"
-  operation   TEXT NOT NULL           -- "engrave" | "score" | "cut"
-                CHECK(operation IN ('engrave','score','cut')),
-  power       INTEGER,               -- 0–100 %
-  speed       INTEGER,               -- mm/min
-  lines_per_inch INTEGER,
-  passes      INTEGER DEFAULT 1,
-  focus_offset_mm REAL DEFAULT 0,    -- e.g. -2 for Baltic Birch cut
-  notes       TEXT,
-  starred     INTEGER DEFAULT 0,     -- 1 = user-marked as best
-  created_at  TEXT DEFAULT (datetime('now')),
-  updated_at  TEXT DEFAULT (datetime('now'))
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  material        TEXT NOT NULL,
+  operation       TEXT NOT NULL CHECK(operation IN ('engrave','score','cut')),
+  power           INTEGER,               -- 0–100 %
+  speed           INTEGER,               -- mm/min
+  lines_per_inch  INTEGER,
+  passes          INTEGER DEFAULT 1,
+  focus_offset_mm REAL DEFAULT 0,        -- e.g. -2 for Baltic Birch cut
+  notes           TEXT,
+  starred         INTEGER DEFAULT 0,     -- 1 = user bookmark (≠ confirmed)
+  role            TEXT DEFAULT 'candidate'
+                    CHECK(role IN ('candidate','confirmed','archived')),
+  created_at      TEXT DEFAULT (datetime('now')),
+  updated_at      TEXT DEFAULT (datetime('now'))
 );
 ```
+Role rules: exactly one `confirmed` per (material, operation) pair; confirming a
+new one atomically archives the previous. `archived` hidden from default GET.
 
-**`usage_log`**
-One row per laser session.
+**`projects`**
+One row per laser project (multi-session endeavour).
+```sql
+CREATE TABLE IF NOT EXISTS projects (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  name         TEXT NOT NULL,
+  status       TEXT DEFAULT 'active'
+                 CHECK(status IN ('active','paused','complete','abandoned')),
+  goal         TEXT,
+  milestones   TEXT DEFAULT '{"design":false,"material_acquired":false,
+                              "test_run":false,"production":false,
+                              "finishing":false,"documented":false}',
+  outcome      TEXT,
+  completed_at TEXT,
+  created_at   TEXT DEFAULT (datetime('now')),
+  updated_at   TEXT DEFAULT (datetime('now'))
+);
+```
+`milestones` is a JSON string — always parse with `JSON.parse()` before use.
+
+**`usage_log`** (sessions)
+One row per laser session. Several columns were added via migration.
 ```sql
 CREATE TABLE IF NOT EXISTS usage_log (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   job_date     TEXT NOT NULL,        -- ISO date YYYY-MM-DD
   material     TEXT,
   operation    TEXT CHECK(operation IN ('engrave','score','cut','mixed')),
-  project_name TEXT,
+  project_name TEXT,                 -- legacy free-text; prefer project_id
   duration_min INTEGER,
-  file_used    TEXT,                 -- filename or path
+  file_used    TEXT,
   setting_id   INTEGER REFERENCES material_settings(id),
   outcome      TEXT CHECK(outcome IN ('success','partial','failed')),
   notes        TEXT,
+  created_at   TEXT DEFAULT (datetime('now')),
+  -- added via migration:
+  project_id   INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+  session_type TEXT DEFAULT 'laser',
+  status       TEXT DEFAULT 'planned'
+                 CHECK(status IN ('planned','in_progress','completed','aborted')),
+  started_at   TEXT,
+  ended_at     TEXT
+);
+```
+
+**`session_observations`**
+Captures discoveries, issues, and notes during or after a session.
+```sql
+CREATE TABLE IF NOT EXISTS session_observations (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id   INTEGER NOT NULL REFERENCES usage_log(id) ON DELETE CASCADE,
+  type         TEXT NOT NULL CHECK(type IN ('note','discovery','issue','question')),
+  content      TEXT NOT NULL,
+  dismissed_at TEXT,
+  promoted_to  TEXT,               -- 'note' | 'setting' when promoted
   created_at   TEXT DEFAULT (datetime('now'))
 );
 ```
+Dismissed observations are soft-deleted; `DELETE /api/observations/purge` removes
+those older than 90 days.
 
 **`docs_sections`**
 Parsed manual content, searchable by full-text.
@@ -300,23 +348,50 @@ Import these sections from the manual into `docs_sections`:
 All routes return JSON. All mutation routes (`POST`, `PUT`, `DELETE`)
 expect `Content-Type: application/json`.
 
+### Projects — `routes/projects.js`
+
+```
+GET    /api/projects                 list all; ?status=
+GET    /api/projects/:id             single project with embedded sessions array
+POST   /api/projects                 create
+PUT    /api/projects/:id             update (partial OK); status→complete sets completed_at
+DELETE /api/projects/:id             detaches sessions (sets project_id=NULL), does not delete them
+```
+
+### Sessions — `routes/sessions.js`
+
+```
+GET    /api/sessions                 list; ?status=&outcome=&project_id=&from=&to=
+GET    /api/sessions/:id             single session with embedded observations array
+POST   /api/sessions                 create (status defaults to 'planned')
+PUT    /api/sessions/:id             update (partial OK)
+PUT    /api/sessions/:id/begin       planned → in_progress; sets started_at
+PUT    /api/sessions/:id/complete    in_progress → completed; sets ended_at
+PUT    /api/sessions/:id/abort       in_progress → aborted; sets ended_at
+DELETE /api/sessions/:id             hard delete
+```
+
+### Observations — `routes/observations.js`
+
+```
+GET    /api/observations             list; ?session_id=&type=&dismissed=
+POST   /api/observations             create (requires session_id, type, content)
+PUT    /api/observations/:id/dismiss soft-delete: sets dismissed_at
+POST   /api/observations/:id/promote/note  → creates learning_note, dismisses observation
+DELETE /api/observations/purge       removes dismissed observations older than 90 days
+```
+
 ### Settings — `routes/settings.js`
 
 ```
-GET    /api/settings                 list all; ?material=&operation=&starred=1
+GET    /api/settings                 list; ?material=&operation=&starred=1&archived=1
 GET    /api/settings/:id             single row
-POST   /api/settings                 create new row
+POST   /api/settings                 create (role defaults to 'candidate')
 PUT    /api/settings/:id             update (partial OK)
 DELETE /api/settings/:id             delete
-PUT    /api/settings/:id/star        toggle starred field
-```
-
-### Usage log — `routes/usage.js`
-
-```
-GET    /api/usage                    list; ?from=&to=&outcome=
-POST   /api/usage                    log a session
-DELETE /api/usage/:id
+PUT    /api/settings/:id/star        toggle starred (0↔1)
+PUT    /api/settings/:id/confirm     atomic: archive existing confirmed for same
+                                     material+operation, set this one confirmed
 ```
 
 ### Docs — `routes/docs.js`
@@ -354,38 +429,62 @@ safety gate. Log the deletion to the console with timestamp and filepath.
 ## Frontend architecture
 
 `public/index.html` is a single-page shell:
-- Sidebar with nav links: Dashboard, Settings, Usage Log, Docs, Notes, Files, Quick Reference
+- Sidebar with nav links: Home, Sessions, Projects, Settings, Docs, Notes, Files, Quick Reference
 - `<main id="content">` where page partials are injected
-- `public/js/app.js` handles routing via `history.pushState`, fetches
-  the appropriate partial from `public/pages/`, and calls the module's
-  `init()` function
+- `public/js/app.js` handles routing; fetches partial from `public/pages/`, calls
+  `window.{page}Init()` (global function, not ES module — no build step)
+- `loadedModules` object in `app.js` prevents double-loading `<script>` tags
 
-Each `public/js/*.js` module exports one `init(container)` function that
-fetches data from the API and renders into `container`.
+Each `public/js/*.js` module attaches one `window.{page}Init` function.
 
-**No global state between modules.** Each module fetches what it needs.
+**Cross-page navigation state:** use `window._autoExpandProjectId` (and similar
+`window._*` globals) to pass state between pages before calling `navigate()`.
+The destination page checks and clears the global on load. There is no URL param
+mechanism in the router.
 
 ---
 
 ## Module behaviour notes
 
-### Settings page
+### Home page (`home.js`)
+
+- Shows active session card if any session has `status = 'in_progress'`
+- Shows planned session card if any session has `status = 'planned'`
+- Setup checklist (pre-session safety items) and run checklist are stored in
+  `localStorage` keyed as `cl-{sessionId}-setup` and `cl-{sessionId}-run`
+- "Start Laser Run" button is gated on all run-checklist items being checked;
+  enforced in JS, not the API
+- Nav cards use CSS letter badges (PRJ/SES/SET/etc.) — not emoji, which render
+  as monochrome glyphs on Linux
+- Project cards on home page set `window._autoExpandProjectId` before navigating
+  to the Projects page to trigger auto-expand
+
+### Sessions page (`sessions.js`)
+
+- "Start a New Session" form is visually distinguished with `border: 2px solid var(--accent)`
+- Session lifecycle buttons: Begin (planned→in_progress), Complete, Abort
+- Past sessions table: filter by status, outcome, project; stats strip shows counts
+  for each status
+- "Edit" button (not "View") opens inline detail panel for any session
+- Detail panel: edit fields + observation list; observations can be added to any
+  session including completed ones
+- "→ Note" on an observation uses an inline form (not `prompt()`) to capture topic
+
+### Projects page (`projects.js`)
+
+- Edit form hides the project list while open (`list.style.display = 'none'`)
+- Project detail expand loads sessions inline; "View all →" navigates to Sessions
+  page with project filter pre-set
+- Status count badges act as filter shortcuts
+
+### Settings page (`settings.js`)
 
 - Filter bar: material dropdown (populated from DB), operation radio
   buttons (all / engrave / score / cut), starred toggle
 - Table columns: Material, Op, Power, Speed, LPI, Passes, Focus Offset,
-  Notes, ★, Actions (edit / delete)
-- Inline edit: clicking a row opens a form below the table, pre-filled;
-  same form is used for new rows
+  Notes, Role, ★, Actions (edit / confirm / delete)
+- Archived settings hidden by default; visible with `?archived=1`
 - Starred rows sort to the top within their material group
-
-### Usage log page
-
-- Form at top: date, material, operation, project name, duration,
-  file used, link to setting (optional dropdown), outcome, notes
-- Table below, newest first
-- Basic summary stats at top: total sessions, most used material,
-  success rate
 
 ### Docs page
 

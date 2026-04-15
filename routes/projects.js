@@ -5,10 +5,14 @@ const router = Router();
 
 router.get('/', (req, res) => {
   try {
-    let sql = 'SELECT * FROM projects WHERE 1=1';
+    let sql = `
+      SELECT p.*, u.name AS owner_name
+      FROM projects p
+      LEFT JOIN users u ON u.id = p.owner_id
+      WHERE 1=1`;
     const params = [];
-    if (req.query.status) { sql += ' AND status = ?'; params.push(req.query.status); }
-    sql += ' ORDER BY status ASC, created_at DESC';
+    if (req.query.status) { sql += ' AND p.status = ?'; params.push(req.query.status); }
+    sql += ' ORDER BY p.status ASC, p.created_at DESC';
     res.json(db.prepare(sql).all(...params));
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -17,7 +21,12 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
   try {
-    const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
+    const project = db.prepare(`
+      SELECT p.*, u.name AS owner_name
+      FROM projects p
+      LEFT JOIN users u ON u.id = p.owner_id
+      WHERE p.id = ?
+    `).get(req.params.id);
     if (!project) return res.status(404).json({ error: 'Not found' });
     const sessions = db.prepare(
       'SELECT * FROM usage_log WHERE project_id = ? ORDER BY job_date DESC, id DESC'
@@ -30,12 +39,12 @@ router.get('/:id', (req, res) => {
 
 router.post('/', (req, res) => {
   try {
-    const { name, goal, status } = req.body;
+    const { name, goal, status, owner_id } = req.body;
     if (!name) return res.status(400).json({ error: 'name is required' });
     const info = db.prepare(`
-      INSERT INTO projects (name, goal, status)
-      VALUES (?, ?, ?)
-    `).run(name, goal ?? null, status ?? 'active');
+      INSERT INTO projects (name, goal, status, owner_id)
+      VALUES (?, ?, ?, ?)
+    `).run(name, goal ?? null, status ?? 'active', owner_id ?? null);
     res.status(201).json(db.prepare('SELECT * FROM projects WHERE id = ?').get(info.lastInsertRowid));
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -47,7 +56,7 @@ router.put('/:id', (req, res) => {
     const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
     if (!project) return res.status(404).json({ error: 'Not found' });
 
-    const fields = ['name', 'goal', 'status', 'milestones', 'outcome'];
+    const fields = ['name', 'goal', 'status', 'milestones', 'outcome', 'owner_id'];
     const updates = [];
     const values = [];
     for (const f of fields) {

@@ -6,9 +6,8 @@
 <!-- Start session form (hidden until JS confirms no active session) -->
 <div id="start-session-wrap" style="display:none">
   <div style="border:2px solid var(--accent);border-radius:var(--radius);padding:20px;margin-bottom:28px;background:var(--surface)">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
-      <span style="color:var(--accent);font-size:1.2rem">▶</span>
-      <h2 style="margin:0;color:var(--accent)">Start a New Session</h2>
+    <div class="section-header" style="margin:0 0 16px;padding-top:0;border-top:none">
+      <h2>Start a New Session</h2>
     </div>
     <div class="form-row">
       <div style="flex:1">
@@ -35,6 +34,10 @@
       </div>
     </div>
     <div class="form-row">
+      <div>
+        <label>User</label>
+        <select id="ss-user"><option value="">— None —</option></select>
+      </div>
       <div style="flex:1">
         <label>Design file <span style="font-weight:400;color:var(--text-muted)">— the XCS/LightBurn file you'll use</span></label>
         <input id="ss-file" type="text" placeholder="e.g. FlowerDesign_V2_230424.svg">
@@ -44,9 +47,8 @@
   </div>
 </div>
 
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-top:4px">
-  <h2 style="margin:0">Past Sessions</h2>
-  <div style="flex:1;height:1px;background:var(--border)"></div>
+<div class="section-header">
+  <h2>Past Sessions</h2>
 </div>
 
 <div id="sessions-banner"></div>
