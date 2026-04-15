@@ -21,6 +21,9 @@ const MIGRATIONS = [
   // Phase 1 — users
   `ALTER TABLE projects  ADD COLUMN owner_id INTEGER REFERENCES users(id)`,
   `ALTER TABLE usage_log ADD COLUMN user_id  INTEGER REFERENCES users(id)`,
+  // Phase 2 — settings lineage + profiles
+  `ALTER TABLE material_settings ADD COLUMN family_id INTEGER REFERENCES setting_families(id)`,
+  `ALTER TABLE material_settings ADD COLUMN parent_id INTEGER REFERENCES material_settings(id)`,
 ];
 
 for (const sql of MIGRATIONS) {

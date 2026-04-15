@@ -14,6 +14,15 @@ CREATE TABLE IF NOT EXISTS projects (
   created_at   TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS setting_families (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  material     TEXT NOT NULL,
+  profile_name TEXT NOT NULL,
+  description  TEXT,
+  created_at   TEXT DEFAULT (datetime('now')),
+  UNIQUE(material, profile_name)
+);
+
 CREATE TABLE IF NOT EXISTS material_settings (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   material        TEXT    NOT NULL,
