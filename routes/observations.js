@@ -7,7 +7,8 @@ router.get('/', (req, res) => {
   try {
     let sql = 'SELECT * FROM session_observations WHERE 1=1';
     const params = [];
-    if (req.query.session_id) { sql += ' AND session_id = ?';      params.push(req.query.session_id); }
+    if (req.query.session_id) { sql += ' AND session_id = ?'; params.push(req.query.session_id); }
+    if (req.query.run_id)     { sql += ' AND run_id = ?';     params.push(req.query.run_id); }
     if (req.query.dismissed === 'false') { sql += ' AND dismissed_at IS NULL'; }
     if (req.query.dismissed === 'true')  { sql += ' AND dismissed_at IS NOT NULL'; }
     sql += ' ORDER BY created_at ASC';
@@ -19,16 +20,23 @@ router.get('/', (req, res) => {
 
 router.post('/', (req, res) => {
   try {
-    const { session_id, content, type } = req.body;
-    if (!session_id) return res.status(400).json({ error: 'session_id is required' });
-    if (!content)    return res.status(400).json({ error: 'content is required' });
-    // Verify session exists
+    let { session_id, run_id, content, type } = req.body;
+    if (!content) return res.status(400).json({ error: 'content is required' });
+
+    // If run_id provided without session_id, look up session_id from the run
+    if (run_id && !session_id) {
+      const run = db.prepare('SELECT session_id FROM session_runs WHERE id = ?').get(run_id);
+      if (!run) return res.status(404).json({ error: 'Run not found' });
+      session_id = run.session_id;
+    }
+    if (!session_id) return res.status(400).json({ error: 'session_id or run_id is required' });
+
     const session = db.prepare('SELECT id FROM usage_log WHERE id = ?').get(session_id);
     if (!session) return res.status(404).json({ error: 'Session not found' });
 
     const info = db.prepare(`
-      INSERT INTO session_observations (session_id, content, type) VALUES (?, ?, ?)
-    `).run(session_id, content, type ?? 'note');
+      INSERT INTO session_observations (session_id, run_id, content, type) VALUES (?, ?, ?, ?)
+    `).run(session_id, run_id ?? null, content, type ?? 'note');
     res.status(201).json(db.prepare('SELECT * FROM session_observations WHERE id = ?').get(info.lastInsertRowid));
   } catch (e) {
     res.status(500).json({ error: e.message });

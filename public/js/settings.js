@@ -41,7 +41,7 @@ window.settingsInit = async function () {
 
   function renderParams(r) {
     return `<span style="font-size:0.875rem;color:var(--text-muted)">` +
-      `${r.power ?? '—'}% &nbsp;·&nbsp; ${r.speed ?? '—'} mm/min` +
+      `${r.power ?? '—'}% &nbsp;·&nbsp; ${r.speed ?? '—'} mm/sec` +
       `${r.lines_per_inch ? ` &nbsp;·&nbsp; ${r.lines_per_inch} LPI` : ''}` +
       `${r.passes > 1 ? ` &nbsp;·&nbsp; ${r.passes} passes` : ''}` +
       `${r.focus_offset_mm ? ` &nbsp;·&nbsp; focus ${r.focus_offset_mm}mm` : ''}` +
@@ -232,7 +232,7 @@ window.settingsInit = async function () {
           </div>
           <div><label>Power %</label>
             <input id="f-power" type="number" min="0" max="100" value="${row?.power ?? ''}"></div>
-          <div><label>Speed (mm/min)</label>
+          <div><label>Speed (mm/sec)</label>
             <input id="f-speed" type="number" min="1" value="${row?.speed ?? ''}"></div>
           <div><label>LPI</label>
             <input id="f-lpi" type="number" min="1" value="${row?.lines_per_inch ?? ''}"></div>

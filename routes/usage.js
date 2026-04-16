@@ -39,7 +39,15 @@ router.get('/:id', (req, res) => {
       JOIN users usr ON usr.id = su.user_id
       WHERE su.session_id = ?
     `).all(req.params.id);
-    res.json({ ...row, participants });
+    const runs = db.prepare(`
+      SELECT r.*, ms.power AS setting_power, ms.speed AS setting_speed,
+             sf.profile_name AS family_name
+      FROM session_runs r
+      LEFT JOIN material_settings ms ON ms.id = r.setting_id
+      LEFT JOIN setting_families  sf ON sf.id = r.family_id
+      WHERE r.session_id = ? ORDER BY r.run_number
+    `).all(req.params.id);
+    res.json({ ...row, participants, runs });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -61,6 +69,15 @@ router.post('/start', (req, res) => {
       if (user_id) {
         db.prepare('INSERT OR IGNORE INTO session_users (session_id, user_id) VALUES (?, ?)')
           .run(info.lastInsertRowid, user_id);
+      }
+      // Auto-create run #1 when material is provided
+      if (material) {
+        db.prepare(`
+          INSERT OR IGNORE INTO session_runs
+            (session_id, run_number, material, operation, setting_id, file_used)
+          VALUES (?, 1, ?, ?, ?, ?)
+        `).run(info.lastInsertRowid, material, operation ?? null,
+               setting_id ?? null, file_used ?? null);
       }
       return info;
     });

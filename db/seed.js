@@ -66,7 +66,7 @@ const docs = [
     section: 'Modes',
     title: 'Cutting',
     tags: 'cutting,operation',
-    body: `Cutting uses vector paths at high power and slow speed with multiple passes to sever material completely. Typical settings use 100% power, low speed (e.g. 9–10 mm/min), and 2–3 passes depending on material thickness. Baltic Birch 3/16" requires lowering focus by 2mm from auto-focus baseline.`,
+    body: `Cutting uses vector paths at high power and slow speed with multiple passes to sever material completely. Typical settings use 100% power, low speed (e.g. 9–10 mm/sec), and 2–3 passes depending on material thickness. Baltic Birch 3/16" requires lowering focus by 2mm from auto-focus baseline.`,
   },
   {
     section: 'Modes',

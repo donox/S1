@@ -24,6 +24,17 @@ const MIGRATIONS = [
   // Phase 2 — settings lineage + profiles
   `ALTER TABLE material_settings ADD COLUMN family_id INTEGER REFERENCES setting_families(id)`,
   `ALTER TABLE material_settings ADD COLUMN parent_id INTEGER REFERENCES material_settings(id)`,
+  // Phase 3 — session runs
+  `ALTER TABLE session_observations ADD COLUMN run_id INTEGER REFERENCES session_runs(id) ON DELETE CASCADE`,
+  // Data migration: create run #1 for existing sessions that have material data
+  `INSERT OR IGNORE INTO session_runs (session_id, run_number, material, operation, setting_id, file_used, outcome, notes)
+   SELECT id, 1, material, operation, setting_id, file_used, outcome, notes
+   FROM usage_log WHERE material IS NOT NULL`,
+  // Phase 3b — run_settings: migrate any existing session_runs.setting_id entries
+  `INSERT OR IGNORE INTO run_settings (run_id, setting_id, sort_order)
+   SELECT id, setting_id, 0 FROM session_runs WHERE setting_id IS NOT NULL`,
+  `ALTER TABLE run_settings ADD COLUMN operation TEXT CHECK(operation IN ('engrave','score','cut'))`,
+  `ALTER TABLE run_settings ADD COLUMN lines_per_inch INTEGER`,
 ];
 
 for (const sql of MIGRATIONS) {

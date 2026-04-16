@@ -17,10 +17,31 @@ The system is evolving through five phases. Each phase leaves the app fully func
 | Phase | Scope | Key change | Status |
 |-------|-------|------------|--------|
 | 1 | Users | Add named local users; owner on projects and sessions | **Complete** |
-| 2 | Settings lineage + profiles | Parent-child setting versioning; material profiles as grouping unit | Pending |
-| 3 | Session → Runs | Sessions become containers; runs are individual laser jobs | Pending |
+| 2 | Settings lineage + profiles | Parent-child setting versioning; material profiles as grouping unit | **Complete** |
+| 3 | Session → Runs | Sessions become containers; runs are individual laser jobs | **Current** |
 | 4 | Artifacts + modifiers | Named artifact types with parameter deltas | Pending |
 | 5 | Cleanup | Remove deprecated columns; final stats/dashboard update | Pending |
+| 6 | UI framework redesign | Replace vanilla CSS/JS frontend with Bootstrap (or equivalent) | Pending |
+
+### Phase 6 notes — UI redesign prerequisite
+
+Before starting Phase 6, all existing functionality must be fully documented so nothing
+is lost in the rewrite. Specifically:
+
+- Every page and its features inventoried (Home, Sessions, Projects, Materials, Docs,
+  Notes, Files, Quick Reference)
+- Every API route exercised and confirmed working
+- All inter-page navigation state (e.g. `window._autoExpandProjectId`) documented
+- Phase 5 cleanup complete so the data model is stable before the UI is rebuilt
+
+Bootstrap via CDN is the leading candidate (no build step required, wide community
+experience with responsive grid and component patterns). The current vanilla CSS
+custom-property approach is intentionally Bootstrap-compatible in spirit — the colour
+palette and spacing variables map cleanly to Bootstrap CSS variables.
+
+The rewrite is a full frontend replacement. Backend (Express + SQLite routes) is
+unchanged. Keep `public/js/app.js` router pattern or replace with a lightweight
+equivalent — no React/Vue/build pipeline unless explicitly decided otherwise.
 
 ---
 
@@ -104,7 +125,7 @@ A **run** is one laser job within a session. One session can contain many runs.
 - An **artifact** is a named thing being made (coaster, box lid, pendant, sign).
   It lives in an `artifacts` table and can optionally have a `default_family_id`
   (the material profile most commonly used for it).
-- Artifacts carry **parameter modifiers**: `power_delta` (±%), `speed_delta` (±mm/min),
+- Artifacts carry **parameter modifiers**: `power_delta` (±%), `speed_delta` (±mm/sec),
   `focus_delta` (±mm), `passes_override`. These are deltas applied on top of the
   base material setting when a run targets that artifact.
 - Modifier application order: base setting → material profile overrides → artifact
@@ -142,7 +163,7 @@ improving cut-through. Never seed this as 0.
 | `90` days | `routes/observations.js` DELETE /purge | Observation soft-delete retention window |
 | `-2` | `db/seed.js` | Baltic Birch focus offset (mm below auto-focus) |
 | `0–100` | Power field | Percentage of max laser output (not watts) |
-| `mm/min` | Speed field | All speeds are in millimetres per minute, not percentage |
+| `mm/sec` | Speed field | All speeds are in millimetres per second, not percentage |
 | `3000` | `.env` PORT | Default local port |
 | `5` | `public/js/projects.js` loadDetail | Sessions shown in project detail preview before "+ N more" |
 | `4000` | `public/js/projects.js` showBanner | Success banner auto-dismiss delay in ms |
@@ -389,10 +410,10 @@ on some displays.
 | Parameter | Range | Unit | Notes |
 |-----------|-------|------|-------|
 | Power | 0–100 | % of max output | Not watts |
-| Speed | ~9–400+ | mm/min | Lower = slower = more energy |
+| Speed | ~9–400+ | mm/sec | Lower = slower = more energy |
 | LPI | 100–500 | lines per inch | Higher = finer detail, slower |
 | Passes | 1–5+ | count | Cutting thick material needs 2–3 |
 | Focus offset | -5 to +5 | mm | Negative = closer to material |
 
 Baltic Birch 3/16" needs focus_offset = -2 (hardcoded in seed, must not be changed).
-Glass engraving: power 70–80%, speed 80–200 mm/min, 200 LPI, 1 pass.
+Glass engraving: power 70–80%, speed 80–200 mm/sec, 200 LPI, 1 pass.

@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS material_settings (
   material        TEXT NOT NULL,
   operation       TEXT NOT NULL CHECK(operation IN ('engrave','score','cut')),
   power           INTEGER,               -- 0–100 %
-  speed           INTEGER,               -- mm/min
+  speed           INTEGER,               -- mm/sec
   lines_per_inch  INTEGER,
   passes          INTEGER DEFAULT 1,
   focus_offset_mm REAL DEFAULT 0,        -- e.g. -2 for Baltic Birch cut
@@ -616,7 +616,7 @@ Keep this in mind when writing UI labels, help text, and comments.
 
 **Parameter meanings:**
 - Power: 0–100%, percentage of max laser output
-- Speed: mm/min (lower = slower = more energy delivered = deeper cut)
+- Speed: mm/sec (lower = slower = more energy delivered = deeper cut)
 - LPI: lines per inch — raster scan density; higher = finer, slower
 - Passes: number of times the laser traverses the same path
 - Focus offset: millimetre adjustment from auto-focus baseline (negative = closer to material)

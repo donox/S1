@@ -58,9 +58,46 @@ CREATE TABLE IF NOT EXISTS usage_log (
   created_at   TEXT    DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS session_runs (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id      INTEGER NOT NULL REFERENCES usage_log(id) ON DELETE CASCADE,
+  run_number      INTEGER NOT NULL DEFAULT 1,
+  material        TEXT,
+  operation       TEXT CHECK(operation IN ('engrave','score','cut')),
+  setting_id      INTEGER REFERENCES material_settings(id),
+  family_id       INTEGER REFERENCES setting_families(id),
+  power_override  INTEGER,
+  speed_override  INTEGER,
+  passes_override INTEGER,
+  focus_override  REAL,
+  file_used       TEXT,
+  outcome         TEXT CHECK(outcome IN ('success','partial','failed')),
+  notes           TEXT,
+  started_at      TEXT,
+  ended_at        TEXT,
+  created_at      TEXT DEFAULT (datetime('now')),
+  UNIQUE(session_id, run_number)
+);
+
+CREATE TABLE IF NOT EXISTS run_settings (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id          INTEGER NOT NULL REFERENCES session_runs(id) ON DELETE CASCADE,
+  setting_id      INTEGER REFERENCES material_settings(id) ON DELETE SET NULL,
+  operation       TEXT    CHECK(operation IN ('engrave','score','cut')),
+  purpose         TEXT,
+  power           INTEGER,
+  speed           INTEGER,
+  lines_per_inch  INTEGER,
+  passes          INTEGER,
+  focus_offset_mm REAL,
+  sort_order      INTEGER DEFAULT 0,
+  created_at      TEXT    DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS session_observations (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   session_id   INTEGER NOT NULL REFERENCES usage_log(id) ON DELETE CASCADE,
+  run_id       INTEGER REFERENCES session_runs(id) ON DELETE CASCADE,
   content      TEXT    NOT NULL,
   type         TEXT    DEFAULT 'note' CHECK(type IN ('note','discovery','issue','question')),
   dismissed_at TEXT,

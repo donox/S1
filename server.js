@@ -12,6 +12,7 @@ app.use('/api/families',      require('./routes/families'));
 app.use('/api/projects',      require('./routes/projects'));
 app.use('/api/settings',      require('./routes/settings'));
 app.use('/api/usage',         require('./routes/usage'));
+app.use('/api/runs',          require('./routes/runs'));
 app.use('/api/observations',  require('./routes/observations'));
 app.use('/api/docs',          require('./routes/docs'));
 app.use('/api/notes',         require('./routes/notes'));
