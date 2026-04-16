@@ -87,20 +87,20 @@ Changes:
 - Filter bar: optional source filter so you can view only community settings or only
   your own
 
-### Stage 2 — Structured settings import
+### Stage 2 — Structured settings import ✓ Complete
 
 **Why second:** Once source attribution exists, you can import in bulk without losing
 provenance.
 
-Changes:
-- `db/import-settings.js` script: reads a JSON or CSV file, inserts rows as `candidate`
-  with `source` and `source_url` set. Idempotent — skip rows that already exist
-  (match on material + operation + power + speed as a rough dedup key, or use a
-  `source_url` unique index).
-- Populate from: xTool's official parameter tables, community-curated lists. Do not
-  auto-confirm anything. The import script produces candidates only.
-- Consider: a simple admin endpoint `POST /api/settings/import` that accepts a JSON
-  array, for future UI-driven import (Stage 4 territory).
+Delivered:
+- `db/import-settings.js`: CLI script reads a JSON file (`process.argv[2]`), validates
+  rows, deduplicates on `(material, operation, power, speed)` via explicit SELECT check,
+  inserts as `role='candidate'` with `source`/`source_url`; wrapped in a transaction;
+  reports inserted/skipped/errors counts.
+- `db/sample-import.json`: example import file with xtool-official and community rows.
+- `POST /api/settings/import`: accepts `{ settings: [...] }` body, same logic as the
+  script, returns `{ inserted, skipped, errors }`. All imports forced to `candidate`
+  regardless of what the JSON specifies. `source` defaults to `'other'` if unrecognized.
 
 ### Stage 3 — Narrative knowledge in `docs_sections`
 
