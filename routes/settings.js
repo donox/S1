@@ -204,4 +204,82 @@ router.post('/:id/improve', (req, res) => {
   }
 });
 
+// Bulk import — all rows forced to role='candidate'; dedup on (material, operation, power, speed)
+router.post('/import', (req, res) => {
+  try {
+    const rows = req.body.settings;
+    if (!Array.isArray(rows) || !rows.length) {
+      return res.status(400).json({ error: "'settings' must be a non-empty array" });
+    }
+
+    const VALID_SOURCES    = ['personal', 'xtool-official', 'community', 'other'];
+    const VALID_OPERATIONS = ['engrave', 'score', 'cut'];
+
+    const findExisting = db.prepare(`
+      SELECT id FROM material_settings
+      WHERE material = ? AND operation = ? AND power = ? AND speed = ?
+    `);
+    const insertRow = db.prepare(`
+      INSERT INTO material_settings
+        (material, operation, power, speed, lines_per_inch, passes,
+         focus_offset_mm, notes, starred, role, source, source_url)
+      VALUES
+        (@material, @operation, @power, @speed, @lines_per_inch, @passes,
+         @focus_offset_mm, @notes, 0, 'candidate', @source, @source_url)
+    `);
+
+    let inserted = 0;
+    let skipped  = 0;
+    const errors = [];
+
+    const importAll = db.transaction(() => {
+      for (let i = 0; i < rows.length; i++) {
+        const raw = rows[i];
+        const label = `row ${i + 1}`;
+
+        if (!raw.material || typeof raw.material !== 'string') {
+          errors.push(`${label}: missing or invalid 'material'`); continue;
+        }
+        if (!raw.operation || !VALID_OPERATIONS.includes(raw.operation)) {
+          errors.push(`${label} (${raw.material}): operation must be engrave, score, or cut`); continue;
+        }
+        if (raw.power == null || typeof raw.power !== 'number') {
+          errors.push(`${label} (${raw.material}/${raw.operation}): power is required and must be a number`); continue;
+        }
+        if (raw.speed == null || typeof raw.speed !== 'number') {
+          errors.push(`${label} (${raw.material}/${raw.operation}): speed is required and must be a number`); continue;
+        }
+
+        if (findExisting.get(raw.material, raw.operation, raw.power, raw.speed)) {
+          skipped++; continue;
+        }
+
+        const source = VALID_SOURCES.includes(raw.source) ? raw.source : 'other';
+        try {
+          insertRow.run({
+            material:        raw.material,
+            operation:       raw.operation,
+            power:           raw.power,
+            speed:           raw.speed,
+            lines_per_inch:  raw.lines_per_inch  ?? null,
+            passes:          raw.passes          ?? 1,
+            focus_offset_mm: raw.focus_offset_mm ?? 0,
+            notes:           raw.notes           ?? null,
+            source,
+            source_url:      raw.source_url      ?? null,
+          });
+          inserted++;
+        } catch (e) {
+          errors.push(`${label} (${raw.material}/${raw.operation}): ${e.message}`);
+        }
+      }
+    });
+
+    importAll();
+    res.json({ inserted, skipped, errors });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

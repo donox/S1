@@ -1,0 +1,61 @@
+[
+  {
+    "material": "Walnut",
+    "operation": "engrave",
+    "power": 45,
+    "speed": 250,
+    "lines_per_inch": 254,
+    "passes": 1,
+    "focus_offset_mm": 0,
+    "notes": "From xTool official parameter table for S1 20W",
+    "source": "xtool-official",
+    "source_url": "https://www.xtool.com/pages/parameter"
+  },
+  {
+    "material": "Cherry",
+    "operation": "engrave",
+    "power": 50,
+    "speed": 240,
+    "lines_per_inch": 254,
+    "passes": 1,
+    "focus_offset_mm": 0,
+    "notes": "Community tested, consistent results reported",
+    "source": "community",
+    "source_url": "https://www.reddit.com/r/xtool/comments/example"
+  },
+  {
+    "material": "Maple",
+    "operation": "engrave",
+    "power": 55,
+    "speed": 280,
+    "lines_per_inch": 200,
+    "passes": 1,
+    "focus_offset_mm": 0,
+    "notes": "xTool official recommendation",
+    "source": "xtool-official",
+    "source_url": "https://www.xtool.com/pages/parameter"
+  },
+  {
+    "material": "Maple",
+    "operation": "cut",
+    "power": 100,
+    "speed": 12,
+    "lines_per_inch": null,
+    "passes": 3,
+    "focus_offset_mm": 0,
+    "notes": "Community tested on 1/8\" maple",
+    "source": "community",
+    "source_url": "https://forum.xtool.com/t/maple-cutting-settings/example"
+  },
+  {
+    "material": "Leather",
+    "operation": "engrave",
+    "power": 40,
+    "speed": 300,
+    "lines_per_inch": 200,
+    "passes": 1,
+    "focus_offset_mm": 0,
+    "notes": "Light engrave — avoid burning through. Test on scrap first.",
+    "source": "community"
+  }
+]
