@@ -53,6 +53,37 @@ React/Vue/build pipeline unless explicitly decided otherwise.
 
 ---
 
+### Planned: SKILL.md refactor into sub-files
+
+**Goal:** Split the monolithic SKILL.md into files grouped by stability, so Phase 6
+(UI redesign) can wipe and rewrite volatile implementation detail without touching
+stable domain knowledge.
+
+**Proposed structure:**
+
+| File | Contents | Stability |
+|------|----------|-----------|
+| `SKILL.md` | This index: links to sub-files, roadmap, known gaps | Updated per phase |
+| `SKILL-domain.md` | Laser safety, parameter ranges, machine specs; business rules (role flow, lifecycle, policies, artifacts, users); domain "why"s | Rarely changes |
+| `SKILL-impl.md` | Code patterns (route error handling, partial update, apiFetch, etc.), magic number locations, CSS theme, DB/frontend assumptions, implementation "why"s | Rewritten at Phase 6 |
+
+**Boundary notes (confirmed before executing):**
+
+- The "why" comments block must be **split**: domain "why"s (detach on delete, archive
+  not delete, deltas not absolutes, 90-day retention) → `SKILL-domain.md`;
+  implementation "why"s (window.{page}Init, FTS5 triggers, localStorage checklists,
+  inline forms, `confirm: true`) → `SKILL-impl.md`.
+- CSS theme quick reference → `SKILL-impl.md` (entirely replaced in Phase 6).
+- "Assumptions baked into logic": backend assumptions (dotenv order, better-sqlite3 sync,
+  FTS5 triggers, schema migrations, milestones JSON, flat-directory scan) → `SKILL-impl.md`
+  but marked stable through Phase 6; frontend assumptions (window.{page}Init,
+  localStorage, inline forms) → `SKILL-impl.md` volatile section.
+- Roadmap and known gaps stay in `SKILL.md` as the index/status tracker.
+
+**Do not execute until explicitly requested.**
+
+---
+
 ## Domain rules and constraints
 
 ### Laser safety (hard rule — never relax)
