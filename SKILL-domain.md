@@ -186,6 +186,35 @@ Each layer is optional. Only deltas are stored; the UI computes and displays eff
 values. This keeps the stored data meaningful even as the base setting evolves — a delta
 of "+5% power" stays correct regardless of what the base power is changed to.
 
+### Setting source attribution
+
+Every `material_settings` row carries a `source` field indicating where the parameters
+came from, and an optional `source_url` linking back to the original reference.
+
+Allowed values for `source`:
+
+| Value | Meaning |
+|-------|---------|
+| `personal` | Parameters you tested yourself on your machine — the default |
+| `xtool-official` | From xTool's own documentation or parameter tables |
+| `community` | From forums, Reddit, YouTube, or other community sources |
+| `other` | Any other origin (import scripts, etc.) |
+
+**The confirmation workflow is independent of source.** A community setting can be
+confirmed once you have personally validated it produces the expected result on your
+machine. A personal candidate can stay unconfirmed indefinitely. Source describes
+*origin*; role describes *your confidence in it*.
+
+**`confirmed` always means personally validated.** Importing an xTool-official setting
+does not make it confirmed — it enters as `candidate` and earns confirmation through
+your own experience. This is what keeps the `confirmed` designation meaningful.
+
+`source_url` is optional but recommended for non-personal settings. It provides
+traceability back to the original page so you can re-check the source or find related
+information.
+
+---
+
 ### Project deletion policy
 
 Deleting a project **does not** delete its sessions. Instead, sessions are detached

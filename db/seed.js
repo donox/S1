@@ -7,9 +7,9 @@ const db = require('./db');
 
 const insertSetting = db.prepare(`
   INSERT OR IGNORE INTO material_settings
-    (material, operation, power, speed, lines_per_inch, passes, focus_offset_mm, notes, starred, role)
+    (material, operation, power, speed, lines_per_inch, passes, focus_offset_mm, notes, starred, role, source)
   VALUES
-    (@material, @operation, @power, @speed, @lines_per_inch, @passes, @focus_offset_mm, @notes, @starred, @role)
+    (@material, @operation, @power, @speed, @lines_per_inch, @passes, @focus_offset_mm, @notes, @starred, @role, 'personal')
 `);
 
 const settings = [
@@ -42,7 +42,9 @@ const seedSettings = db.transaction(() => {
     const info = insertSetting.run(row);
     if (info.changes) count++;
   }
-  console.log(`Material settings: ${count} inserted (${settings.length - count} already existed)`);
+  // Backfill source = 'personal' on any existing rows that predate the column
+  const backfill = db.prepare(`UPDATE material_settings SET source = 'personal' WHERE source IS NULL`).run();
+  console.log(`Material settings: ${count} inserted (${settings.length - count} already existed)${backfill.changes ? `, ${backfill.changes} backfilled with source='personal'` : ''}`);
 });
 seedSettings();
 

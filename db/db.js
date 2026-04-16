@@ -37,6 +37,9 @@ const MIGRATIONS = [
    SELECT id, setting_id, 0 FROM session_runs WHERE setting_id IS NOT NULL`,
   `ALTER TABLE run_settings ADD COLUMN operation TEXT CHECK(operation IN ('engrave','score','cut'))`,
   `ALTER TABLE run_settings ADD COLUMN lines_per_inch INTEGER`,
+  // External knowledge — Stage 1: source attribution on material_settings
+  `ALTER TABLE material_settings ADD COLUMN source TEXT DEFAULT 'personal'`,
+  `ALTER TABLE material_settings ADD COLUMN source_url TEXT`,
 ];
 
 for (const sql of MIGRATIONS) {

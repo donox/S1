@@ -17,6 +17,7 @@ router.get('/', (req, res) => {
     if (req.query.family_id) { sql += ' AND ms.family_id = ?';  params.push(req.query.family_id); }
     if (!req.query.archived) { sql += " AND ms.role != 'archived'"; }
     if (req.query.starred)   { sql += ' AND ms.starred = 1'; }
+    if (req.query.source)    { sql += ' AND ms.source = ?';  params.push(req.query.source); }
     sql += ` ORDER BY ms.material, ms.operation,
       CASE ms.role WHEN 'confirmed' THEN 0 ELSE 1 END, ms.id DESC`;
     res.json(db.prepare(sql).all(...params));
@@ -43,17 +44,22 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const { material, operation, power, speed, lines_per_inch, passes,
-            focus_offset_mm, notes, starred, role, family_id, parent_id } = req.body;
+            focus_offset_mm, notes, starred, role, family_id, parent_id,
+            source, source_url } = req.body;
     if (!material)  return res.status(400).json({ error: 'material is required' });
     if (!operation) return res.status(400).json({ error: 'operation is required' });
+    const validSources = ['personal','xtool-official','community','other'];
+    const resolvedSource = validSources.includes(source) ? source : 'personal';
     const info = db.prepare(`
       INSERT INTO material_settings
         (material, operation, power, speed, lines_per_inch, passes,
-         focus_offset_mm, notes, starred, role, family_id, parent_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         focus_offset_mm, notes, starred, role, family_id, parent_id,
+         source, source_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(material, operation, power ?? null, speed ?? null, lines_per_inch ?? null,
            passes ?? 1, focus_offset_mm ?? 0, notes ?? null, starred ? 1 : 0,
-           role ?? 'candidate', family_id ?? null, parent_id ?? null);
+           role ?? 'candidate', family_id ?? null, parent_id ?? null,
+           resolvedSource, source_url ?? null);
     res.status(201).json(db.prepare(`
       SELECT ms.*, sf.profile_name AS family_name
       FROM material_settings ms
@@ -70,7 +76,8 @@ router.put('/:id', (req, res) => {
     const row = db.prepare('SELECT * FROM material_settings WHERE id = ?').get(req.params.id);
     if (!row) return res.status(404).json({ error: 'Not found' });
     const fields = ['material','operation','power','speed','lines_per_inch','passes',
-                    'focus_offset_mm','notes','starred','role','family_id'];
+                    'focus_offset_mm','notes','starred','role','family_id',
+                    'source','source_url'];
     const updates = [];
     const values = [];
     for (const f of fields) {

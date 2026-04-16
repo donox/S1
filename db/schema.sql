@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS material_settings (
   notes           TEXT,
   role            TEXT    DEFAULT 'candidate' CHECK(role IN ('candidate','confirmed','archived')),
   starred         INTEGER DEFAULT 0,
+  source          TEXT    DEFAULT 'personal' CHECK(source IN ('personal','xtool-official','community','other')),
+  source_url      TEXT,
   created_at      TEXT    DEFAULT (datetime('now')),
   updated_at      TEXT    DEFAULT (datetime('now'))
 );
