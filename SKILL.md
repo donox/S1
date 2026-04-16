@@ -102,7 +102,7 @@ Delivered:
   script, returns `{ inserted, skipped, errors }`. All imports forced to `candidate`
   regardless of what the JSON specifies. `source` defaults to `'other'` if unrecognized.
 
-### Stage 3 — Narrative knowledge in `docs_sections`
+### Stage 3 — Narrative knowledge in `docs_sections` ✓ Complete
 
 **Why third:** Parameter rows in `material_settings` can't capture advice like "acrylic
 tends to melt at the edges if speed is too low — try two passes faster rather than one
@@ -118,7 +118,7 @@ Changes:
   technique articles (summarised, not scraped verbatim — copyright awareness)
 - Docs UI: show source badge on doc cards; filter sidebar gains a Source filter
 
-### Stage 4 — Curated external links on Quick Reference
+### Stage 4 — Curated external links on Quick Reference ✓ Complete
 
 **Why last (and lightest):** Some knowledge is best left external — xTool updates
 their official docs, community wikis evolve. A curated link list is low maintenance

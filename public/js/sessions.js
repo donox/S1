@@ -43,6 +43,24 @@ window.sessionsInit = async function () {
     issue: 'var(--accent)', question: 'var(--accent2)',
   };
   const OUTCOME_COLOR = { success: 'var(--success)', partial: 'var(--accent2)', failed: 'var(--accent)' };
+  const OBS_OUTCOME_COLOR = {
+    positive: 'var(--success)', negative: 'var(--danger)',
+    neutral: 'var(--text-muted)', unexpected: 'var(--accent2)',
+  };
+
+  function outcomeBadge(outcome) {
+    if (!outcome) return '';
+    const c = OBS_OUTCOME_COLOR[outcome] || 'var(--text-muted)';
+    return `<span style="color:${c};font-size:0.7rem;text-transform:uppercase;font-weight:600;margin-left:6px">${outcome}</span>`;
+  }
+
+  // Returns a short "setting: material/op" label for observations linked to a saved setting.
+  function fmtLinkedSetting(settingId) {
+    if (!settingId) return '';
+    const s = cachedRunSettings.find(r => r.id === settingId);
+    if (!s) return '';
+    return `<span style="font-size:0.75rem;color:var(--text-muted);margin-left:6px">[${s.material} / ${s.operation}]</span>`;
+  }
 
   // ── Populate dropdowns ────────────────────────────────────────────
   async function populateDropdowns() {
@@ -113,11 +131,18 @@ window.sessionsInit = async function () {
 
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
           <div style="display:flex;gap:8px;margin-bottom:8px;align-items:stretch;flex-wrap:wrap">
-            <select id="obs-type" style="min-width:120px;flex-shrink:0">
+            <select id="obs-type" style="min-width:100px;flex-shrink:0">
               <option value="note">Note</option>
               <option value="discovery">Discovery</option>
               <option value="issue">Issue</option>
               <option value="question">Question</option>
+            </select>
+            <select id="obs-outcome" style="min-width:110px;flex-shrink:0">
+              <option value="">outcome…</option>
+              <option value="positive">positive</option>
+              <option value="negative">negative</option>
+              <option value="neutral">neutral</option>
+              <option value="unexpected">unexpected</option>
             </select>
             <input id="obs-input" type="text"
               placeholder="Note anything worth remembering…"
@@ -155,6 +180,7 @@ window.sessionsInit = async function () {
       const input   = document.getElementById('obs-input');
       const content = input.value.trim();
       const type    = document.getElementById('obs-type').value;
+      const outcome = document.getElementById('obs-outcome').value || null;
       if (!content) {
         input.style.borderColor = 'var(--accent)';
         setObsFeedback('Enter something before clicking Add.', 'var(--accent)');
@@ -167,7 +193,7 @@ window.sessionsInit = async function () {
       try {
         await apiFetch('/api/observations', {
           method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ session_id: session.id, content, type }),
+          body: JSON.stringify({ session_id: session.id, content, type, outcome }),
         });
         input.value = '';
         setObsFeedback('✓ Added', 'var(--success)');
@@ -210,6 +236,7 @@ window.sessionsInit = async function () {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);gap:8px">
         <div>
           <span style="color:${TYPE_COLOR[o.type]};font-size:0.75rem;text-transform:uppercase;font-weight:600">${o.type}</span>
+          ${outcomeBadge(o.outcome)}
           <span style="margin-left:8px">${o.content}</span>
         </div>
         <button class="btn btn-secondary btn-sm dismiss-obs" data-id="${o.id}" style="flex-shrink:0">Dismiss</button>
@@ -444,6 +471,7 @@ window.sessionsInit = async function () {
                           padding:5px 0;border-bottom:1px solid var(--border);gap:8px;font-size:0.85rem">
                 <div>
                   <span style="color:${TYPE_COLOR[o.type]};font-size:0.72rem;text-transform:uppercase;font-weight:600">${o.type}</span>
+                  ${outcomeBadge(o.outcome)}
                   <span style="margin-left:6px">${o.content}</span>
                 </div>
                 <button class="btn btn-secondary btn-sm run-obs-dismiss" data-id="${o.id}" data-run-id="${runId}" style="flex-shrink:0">Dismiss</button>
@@ -456,6 +484,13 @@ window.sessionsInit = async function () {
           <option value="discovery">Discovery</option>
           <option value="issue">Issue</option>
           <option value="question">Question</option>
+        </select>
+        <select class="run-obs-outcome" data-run-id="${runId}" style="font-size:0.85rem;flex-shrink:0">
+          <option value="">outcome…</option>
+          <option value="positive">positive</option>
+          <option value="negative">negative</option>
+          <option value="neutral">neutral</option>
+          <option value="unexpected">unexpected</option>
         </select>
         <input class="run-obs-input" data-run-id="${runId}" type="text"
                style="flex:1;min-width:150px;font-size:0.85rem"
@@ -608,11 +643,22 @@ window.sessionsInit = async function () {
             <h3 style="margin-top:0">Session Observations (${undismissed.length} open${dismissed.length ? ', ' + dismissed.length + ' dismissed' : ''})</h3>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;
                         padding:10px 12px;background:var(--surface2);border-radius:var(--radius)">
-              <select id="det-obs-type" style="flex-shrink:0;min-width:110px">
+              <select id="det-obs-type" style="flex-shrink:0;min-width:100px">
                 <option value="note">Note</option>
                 <option value="discovery">Discovery</option>
                 <option value="issue">Issue</option>
                 <option value="question">Question</option>
+              </select>
+              <select id="det-obs-outcome" style="flex-shrink:0;min-width:110px">
+                <option value="">outcome…</option>
+                <option value="positive">positive</option>
+                <option value="negative">negative</option>
+                <option value="neutral">neutral</option>
+                <option value="unexpected">unexpected</option>
+              </select>
+              <select id="det-obs-setting" style="flex-shrink:0;min-width:160px">
+                <option value="">— no setting —</option>
+                ${cachedRunSettings.map(s => `<option value="${s.id}">${s.material} / ${s.operation} (P:${s.power ?? '?'} S:${s.speed ?? '?'})</option>`).join('')}
               </select>
               <input id="det-obs-input" type="text" style="flex:1;min-width:180px"
                 placeholder="Add a session-level observation…">
@@ -684,10 +730,12 @@ window.sessionsInit = async function () {
 
       // Session observation add
       async function submitDetObs() {
-        const input   = document.getElementById('det-obs-input');
-        const content = input.value.trim();
-        const type    = document.getElementById('det-obs-type').value;
-        const fb      = document.getElementById('det-obs-feedback');
+        const input      = document.getElementById('det-obs-input');
+        const content    = input.value.trim();
+        const type       = document.getElementById('det-obs-type').value;
+        const outcome    = document.getElementById('det-obs-outcome').value || null;
+        const setting_id = +document.getElementById('det-obs-setting').value || null;
+        const fb         = document.getElementById('det-obs-feedback');
         if (!content) {
           input.style.borderColor = 'var(--accent)';
           fb.textContent = 'Enter something first.'; fb.style.color = 'var(--accent)';
@@ -699,7 +747,7 @@ window.sessionsInit = async function () {
         try {
           await apiFetch('/api/observations', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ session_id: sessionId, content, type }),
+            body: JSON.stringify({ session_id: sessionId, content, type, outcome, setting_id }),
           });
           input.value = '';
           fb.textContent = '✓ Added'; fb.style.color = 'var(--success)';
@@ -756,6 +804,8 @@ window.sessionsInit = async function () {
       <div id="rev-obs-${o.id}" style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);gap:8px">
         <div>
           <span style="color:${TYPE_COLOR[o.type]};font-size:0.75rem;text-transform:uppercase;font-weight:600">${o.type}</span>
+          ${outcomeBadge(o.outcome)}
+          ${fmtLinkedSetting(o.setting_id)}
           <span style="margin-left:8px;font-size:0.875rem">${o.content}</span>
           ${o.promoted_to ? `<span style="margin-left:8px;font-size:0.75rem;color:var(--success)">→ ${o.promoted_to.replace('_',' ')}</span>` : ''}
         </div>
@@ -917,7 +967,8 @@ window.sessionsInit = async function () {
     if (e.target.classList.contains('run-obs-add')) {
       const runId  = e.target.dataset.runId;
       const input  = detailWrap.querySelector(`.run-obs-input[data-run-id="${runId}"]`);
-      const type   = detailWrap.querySelector(`.run-obs-type[data-run-id="${runId}"]`)?.value;
+      const type    = detailWrap.querySelector(`.run-obs-type[data-run-id="${runId}"]`)?.value;
+      const outcome = detailWrap.querySelector(`.run-obs-outcome[data-run-id="${runId}"]`)?.value || null;
       const content = input?.value.trim();
       if (!content) {
         if (input) { input.style.borderColor = 'var(--accent)'; setTimeout(() => { input.style.borderColor = ''; }, 2000); }
@@ -926,7 +977,7 @@ window.sessionsInit = async function () {
       try {
         await apiFetch('/api/observations', {
           method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ run_id: +runId, content, type: type ?? 'note' }),
+          body: JSON.stringify({ run_id: +runId, content, type: type ?? 'note', outcome }),
         });
         if (input) input.value = '';
         const updated = await apiFetch(`/api/observations?run_id=${runId}`);

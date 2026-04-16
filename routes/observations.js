@@ -9,6 +9,7 @@ router.get('/', (req, res) => {
     const params = [];
     if (req.query.session_id) { sql += ' AND session_id = ?'; params.push(req.query.session_id); }
     if (req.query.run_id)     { sql += ' AND run_id = ?';     params.push(req.query.run_id); }
+    if (req.query.outcome)    { sql += ' AND outcome = ?';    params.push(req.query.outcome); }
     if (req.query.dismissed === 'false') { sql += ' AND dismissed_at IS NULL'; }
     if (req.query.dismissed === 'true')  { sql += ' AND dismissed_at IS NOT NULL'; }
     sql += ' ORDER BY created_at ASC';
@@ -20,7 +21,7 @@ router.get('/', (req, res) => {
 
 router.post('/', (req, res) => {
   try {
-    let { session_id, run_id, content, type } = req.body;
+    let { session_id, run_id, content, type, outcome, setting_id } = req.body;
     if (!content) return res.status(400).json({ error: 'content is required' });
 
     // If run_id provided without session_id, look up session_id from the run
@@ -35,9 +36,29 @@ router.post('/', (req, res) => {
     if (!session) return res.status(404).json({ error: 'Session not found' });
 
     const info = db.prepare(`
-      INSERT INTO session_observations (session_id, run_id, content, type) VALUES (?, ?, ?, ?)
-    `).run(session_id, run_id ?? null, content, type ?? 'note');
+      INSERT INTO session_observations (session_id, run_id, content, type, outcome, setting_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(session_id, run_id ?? null, content, type ?? 'note',
+           outcome ?? null, setting_id ?? null);
     res.status(201).json(db.prepare('SELECT * FROM session_observations WHERE id = ?').get(info.lastInsertRowid));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Update outcome and/or setting_id on an existing observation
+router.put('/:id', (req, res) => {
+  try {
+    const UPDATABLE = ['outcome', 'setting_id'];
+    const updates = [], values = [];
+    for (const f of UPDATABLE) {
+      if (f in req.body) { updates.push(`${f} = ?`); values.push(req.body[f]); }
+    }
+    if (!updates.length) return res.status(400).json({ error: 'No fields to update' });
+    values.push(req.params.id);
+    const info = db.prepare(`UPDATE session_observations SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    if (!info.changes) return res.status(404).json({ error: 'Not found' });
+    res.json(db.prepare('SELECT * FROM session_observations WHERE id = ?').get(req.params.id));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

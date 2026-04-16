@@ -40,6 +40,12 @@ const MIGRATIONS = [
   // External knowledge — Stage 1: source attribution on material_settings
   `ALTER TABLE material_settings ADD COLUMN source TEXT DEFAULT 'personal'`,
   `ALTER TABLE material_settings ADD COLUMN source_url TEXT`,
+  // External knowledge — Stage 3: source attribution on docs_sections
+  `ALTER TABLE docs_sections ADD COLUMN source TEXT DEFAULT 'personal'`,
+  `ALTER TABLE docs_sections ADD COLUMN source_url TEXT`,
+  // Observation enrichment: outcome polarity + direct setting linkage
+  `ALTER TABLE session_observations ADD COLUMN outcome TEXT CHECK(outcome IN ('positive','negative','neutral','unexpected'))`,
+  `ALTER TABLE session_observations ADD COLUMN setting_id INTEGER REFERENCES material_settings(id) ON DELETE SET NULL`,
 ];
 
 for (const sql of MIGRATIONS) {

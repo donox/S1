@@ -115,6 +115,8 @@ CREATE TABLE IF NOT EXISTS session_observations (
   run_id       INTEGER REFERENCES session_runs(id) ON DELETE CASCADE,
   content      TEXT    NOT NULL,
   type         TEXT    DEFAULT 'note' CHECK(type IN ('note','discovery','issue','question')),
+  outcome      TEXT    CHECK(outcome IN ('positive','negative','neutral','unexpected')),
+  setting_id   INTEGER REFERENCES material_settings(id) ON DELETE SET NULL,
   dismissed_at TEXT,
   promoted_to  TEXT,
   promoted_id  INTEGER,
@@ -122,11 +124,13 @@ CREATE TABLE IF NOT EXISTS session_observations (
 );
 
 CREATE TABLE IF NOT EXISTS docs_sections (
-  id      INTEGER PRIMARY KEY AUTOINCREMENT,
-  section TEXT NOT NULL,
-  title   TEXT NOT NULL,
-  body    TEXT NOT NULL,
-  tags    TEXT
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  section    TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  tags       TEXT,
+  source     TEXT DEFAULT 'personal',
+  source_url TEXT
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS docs_fts

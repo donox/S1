@@ -1,0 +1,34 @@
+[
+  {
+    "section": "Techniques",
+    "title": "Acrylic Edge Quality Tips",
+    "body": "Acrylic tends to melt at the edges if speed is too low — the heat builds up and produces a bubbly, frosted edge rather than a clean cut. The general rule: two faster passes beat one slow pass. Try cutting at 80–90% of the speed that almost cuts through, then repeat. This keeps each pass's heat input low enough that the acrylic re-solidifies cleanly before the next pass arrives.\n\nFor engraving, defocus by 1–2 mm to spread the beam slightly. This reduces peak power at the surface and produces a smoother frosted finish rather than deep, brittle grooves.",
+    "tags": "acrylic,cutting,technique,edge-quality",
+    "source": "community",
+    "source_url": "https://www.reddit.com/r/lasercutting/comments/example"
+  },
+  {
+    "section": "Techniques",
+    "title": "Baltic Birch Cutting — Reducing Char",
+    "body": "Baltic birch is a common cutting material but the voids in cheaper sheets can cause unpredictable burn-through. Tips from the community:\n\n1. Use air assist if available — even a small fan blowing across the cut line dramatically reduces char on Baltic birch.\n2. Tape the surface with blue painter's tape before cutting — it burns cleanly and protects the top veneer from scorch marks.\n3. After cutting, immediately wipe with a damp cloth; the char is water-soluble for the first few minutes.\n4. The xTool S1 auto-focus is accurate but lowering an additional 2 mm (focus_offset_mm = -2) increases the kerf and helps with thicker sheets.",
+    "tags": "baltic-birch,cutting,char,technique",
+    "source": "community",
+    "source_url": null
+  },
+  {
+    "section": "Operating Params",
+    "title": "xTool S1 Official Material Guide — Wood",
+    "body": "xTool's official parameter recommendations for common wood types on the S1 20W:\n\n- Basswood 3mm: Cut at power 100%, speed 8 mm/s, 2 passes\n- Plywood 3mm: Cut at power 100%, speed 6 mm/s, 3 passes\n- MDF 3mm: Cut at power 100%, speed 5 mm/s, 3 passes\n- Engraving hardwood: power 50–70%, speed 200–400 mm/s, 300 LPI\n\nNote: These are starting points. Actual results vary by exact sheet composition, ambient humidity, and lens condition. Always run a material test array first.",
+    "tags": "wood,cutting,engraving,official,parameters",
+    "source": "xtool-official",
+    "source_url": "https://support.xtool.com/article/s1-material-settings"
+  },
+  {
+    "section": "Techniques",
+    "title": "Masking Tape for Cleaner Engraving",
+    "body": "Applying blue painter's tape or transfer tape to the workpiece surface before engraving serves two purposes:\n\n1. It absorbs the initial char and smoke residue, keeping the engraved area cleaner.\n2. On light woods, it acts as a resist — the engraved area burns the tape away, while the surrounding surface stays clean.\n\nAfter engraving, peel the tape while the wood is still slightly warm. If it has cooled and char has bonded to the surface, a quick pass with a damp cotton swab loosens it.\n\nThis technique is especially effective on light-coloured woods (maple, ash, pine) where char contrast is important.",
+    "tags": "technique,masking,engraving,char,wood",
+    "source": "community",
+    "source_url": null
+  }
+]
