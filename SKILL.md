@@ -18,10 +18,27 @@ The system is evolving through five phases. Each phase leaves the app fully func
 |-------|-------|------------|--------|
 | 1 | Users | Add named local users; owner on projects and sessions | **Complete** |
 | 2 | Settings lineage + profiles | Parent-child setting versioning; material profiles as grouping unit | **Complete** |
-| 3 | Session → Runs | Sessions become containers; runs are individual laser jobs | **Current** |
+| 3 | Session → Runs | Sessions become containers; runs are individual laser jobs | **Complete** |
 | 4 | Artifacts + modifiers | Named artifact types with parameter deltas | Pending |
 | 5 | Cleanup | Remove deprecated columns; final stats/dashboard update | Pending |
 | 6 | UI framework redesign | Replace vanilla CSS/JS frontend with Bootstrap (or equivalent) | Pending |
+
+### Phase 3 known gaps (deferred, not blocking)
+
+These were identified at Phase 3 close and intentionally left for later:
+
+1. **Run observations cannot be promoted to a learning note.** Session-level observations
+   have a "→ Note" promote button; run-level observations only have "Dismiss." The same
+   promote flow (`POST /api/observations/:id/promote/note`) could be wired up in
+   `renderRunObsSection` in `public/js/sessions.js`.
+
+2. **Session list table still shows `material` and `operation` from `usage_log`.**
+   These columns were the shortcut fields populated when a session is started with a
+   material (auto-creating Run #1). If subsequent runs use different materials the
+   session-level columns become misleading. Consider replacing with a run count column
+   or deriving from runs in the query.
+
+---
 
 ### Phase 6 notes — UI redesign prerequisite
 

@@ -358,24 +358,61 @@ PUT    /api/projects/:id             update (partial OK); status→complete sets
 DELETE /api/projects/:id             detaches sessions (sets project_id=NULL), does not delete them
 ```
 
-### Sessions — `routes/sessions.js`
+### Sessions — `routes/usage.js` (mounted at `/api/usage`)
+
+Sessions are the top-level container for a laser work period. Individual jobs within
+a session are runs (`session_runs`). The `GET /:id` response embeds a `runs[]` array.
 
 ```
-GET    /api/sessions                 list; ?status=&outcome=&project_id=&from=&to=
-GET    /api/sessions/:id             single session with embedded observations array
-POST   /api/sessions                 create (status defaults to 'planned')
-PUT    /api/sessions/:id             update (partial OK)
-PUT    /api/sessions/:id/begin       planned → in_progress; sets started_at
-PUT    /api/sessions/:id/complete    in_progress → completed; sets ended_at
-PUT    /api/sessions/:id/abort       in_progress → aborted; sets ended_at
-DELETE /api/sessions/:id             hard delete
+GET    /api/usage                    list; ?status=&outcome=&project_id=&from=&to=
+GET    /api/usage/:id                single session with embedded runs[] and participants[]
+POST   /api/usage/start              create in_progress session; auto-creates run #1 if
+                                     material provided; body: project_id, material,
+                                     operation, setting_id, file_used, user_id
+POST   /api/usage                    create session (any status); body: job_date required
+PUT    /api/usage/:id                update (partial OK)
+PUT    /api/usage/:id/begin          planned → in_progress; sets started_at
+PUT    /api/usage/:id/complete       sets status=completed, ended_at; body: outcome, notes,
+                                     duration_min
+PUT    /api/usage/:id/abort          sets status=aborted, ended_at
+DELETE /api/usage/:id                hard delete
 ```
+
+### Runs — `routes/runs.js`
+
+Sessions are containers; each laser job within a session is a run.
+
+```
+GET    /api/runs                        list runs for a session; ?session_id= (required)
+                                        each run includes a settings[] array
+GET    /api/runs/:id                    single run with settings[] and observations[]
+POST   /api/runs                        create run (auto-assigns run_number); body: session_id,
+                                        material, file_used, outcome, notes
+PUT    /api/runs/:id                    update run (partial OK): material, file_used,
+                                        outcome, notes, started_at, ended_at
+DELETE /api/runs/:id                    hard delete (cascades to run_settings and observations)
+
+POST   /api/runs/:id/settings           add a setting to a run; body: setting_id (optional FK
+                                        to material_settings), operation, purpose, power, speed,
+                                        lines_per_inch, passes, focus_offset_mm; returns full
+                                        updated settings[] for the run
+PUT    /api/runs/:id/settings/:sid      update a run setting (partial OK); same fields as POST;
+                                        returns full updated settings[] for the run
+DELETE /api/runs/:id/settings/:sid      remove a setting from a run; returns updated settings[]
+```
+
+`run_settings` rows can link to a saved `material_settings` row via `setting_id` (params
+are inherited from the linked setting and shown via JOIN aliases `setting_power`,
+`setting_speed`, etc.) or store params directly for ad-hoc values. Own fields
+(`power`, `speed`, etc.) override the linked setting's values when both are present.
+The API returns `effective_operation` (COALESCE of own `operation` and linked setting's).
 
 ### Observations — `routes/observations.js`
 
 ```
-GET    /api/observations             list; ?session_id=&type=&dismissed=
-POST   /api/observations             create (requires session_id, type, content)
+GET    /api/observations             list; ?session_id=&run_id=&type=&dismissed=
+POST   /api/observations             create; requires session_id or run_id (session_id
+                                     auto-derived from run when only run_id provided)
 PUT    /api/observations/:id/dismiss soft-delete: sets dismissed_at
 POST   /api/observations/:id/promote/note  → creates learning_note, dismisses observation
 DELETE /api/observations/purge       removes dismissed observations older than 90 days
