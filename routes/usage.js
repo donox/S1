@@ -6,9 +6,14 @@ const router = Router();
 router.get('/', (req, res) => {
   try {
     let sql = `
-      SELECT u.*, p.name AS project_name_resolved, usr.name AS user_name
+      SELECT u.id, u.job_date, u.status, u.outcome, u.duration_min,
+             u.file_used, u.notes, u.project_id, u.user_id, u.session_type,
+             u.started_at, u.ended_at, u.created_at,
+             p.name  AS project_name_resolved,
+             usr.name AS user_name,
+             (SELECT COUNT(*) FROM session_runs sr WHERE sr.session_id = u.id) AS run_count
       FROM usage_log u
-      LEFT JOIN projects p  ON p.id   = u.project_id
+      LEFT JOIN projects p   ON p.id  = u.project_id
       LEFT JOIN users    usr ON usr.id = u.user_id
       WHERE 1=1`;
     const params = [];
@@ -27,9 +32,14 @@ router.get('/', (req, res) => {
 router.get('/:id', (req, res) => {
   try {
     const row = db.prepare(`
-      SELECT u.*, p.name AS project_name_resolved, usr.name AS user_name
+      SELECT u.id, u.job_date, u.status, u.outcome, u.duration_min,
+             u.file_used, u.notes, u.project_id, u.user_id, u.session_type,
+             u.started_at, u.ended_at, u.created_at,
+             p.name  AS project_name_resolved,
+             usr.name AS user_name,
+             (SELECT COUNT(*) FROM session_runs sr WHERE sr.session_id = u.id) AS run_count
       FROM usage_log u
-      LEFT JOIN projects p  ON p.id   = u.project_id
+      LEFT JOIN projects p   ON p.id  = u.project_id
       LEFT JOIN users    usr ON usr.id = u.user_id
       WHERE u.id = ?
     `).get(req.params.id);
@@ -61,11 +71,9 @@ router.post('/start', (req, res) => {
     const create = db.transaction(() => {
       const info = db.prepare(`
         INSERT INTO usage_log
-          (project_id, session_type, status, job_date, material, operation,
-           setting_id, file_used, notes, user_id, started_at)
-        VALUES (?, 'laser', 'in_progress', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-      `).run(project_id ?? null, today, material ?? null, operation ?? null,
-             setting_id ?? null, file_used ?? null, notes ?? null, user_id ?? null);
+          (project_id, session_type, status, job_date, file_used, notes, user_id, started_at)
+        VALUES (?, 'laser', 'in_progress', ?, ?, ?, ?, datetime('now'))
+      `).run(project_id ?? null, today, file_used ?? null, notes ?? null, user_id ?? null);
       if (user_id) {
         db.prepare('INSERT OR IGNORE INTO session_users (session_id, user_id) VALUES (?, ?)')
           .run(info.lastInsertRowid, user_id);
@@ -83,10 +91,15 @@ router.post('/start', (req, res) => {
     });
     const info = create();
     res.status(201).json(db.prepare(`
-      SELECT u.*, p.name AS project_name_resolved, usr.name AS user_name
+      SELECT u.id, u.job_date, u.status, u.outcome, u.duration_min,
+             u.file_used, u.notes, u.project_id, u.user_id, u.session_type,
+             u.started_at, u.ended_at, u.created_at,
+             p.name  AS project_name_resolved,
+             usr.name AS user_name,
+             (SELECT COUNT(*) FROM session_runs sr WHERE sr.session_id = u.id) AS run_count
       FROM usage_log u
-      LEFT JOIN projects p   ON p.id   = u.project_id
-      LEFT JOIN users    usr ON usr.id  = u.user_id
+      LEFT JOIN projects p   ON p.id  = u.project_id
+      LEFT JOIN users    usr ON usr.id = u.user_id
       WHERE u.id = ?
     `).get(info.lastInsertRowid));
   } catch (e) {
@@ -96,19 +109,16 @@ router.post('/start', (req, res) => {
 
 router.post('/', (req, res) => {
   try {
-    const { project_id, job_date, material, operation, project_name, duration_min,
-            file_used, setting_id, outcome, notes } = req.body;
+    const { project_id, job_date, duration_min, file_used, outcome, notes } = req.body;
     if (!job_date) return res.status(400).json({ error: 'job_date is required' });
     const allowedStatus = ['planned','in_progress','completed'];
     const resolvedStatus = allowedStatus.includes(req.body.status) ? req.body.status : 'completed';
     const info = db.prepare(`
       INSERT INTO usage_log
-        (project_id, session_type, status, job_date, material, operation, project_name,
-         duration_min, file_used, setting_id, outcome, notes)
-      VALUES (?, 'laser', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(project_id ?? null, resolvedStatus, job_date, material ?? null, operation ?? null,
-           project_name ?? null, duration_min ?? null, file_used ?? null,
-           setting_id ?? null, outcome ?? null, notes ?? null);
+        (project_id, session_type, status, job_date, duration_min, file_used, outcome, notes)
+      VALUES (?, 'laser', ?, ?, ?, ?, ?, ?)
+    `).run(project_id ?? null, resolvedStatus, job_date, duration_min ?? null,
+           file_used ?? null, outcome ?? null, notes ?? null);
     res.status(201).json(db.prepare('SELECT * FROM usage_log WHERE id = ?').get(info.lastInsertRowid));
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -119,8 +129,7 @@ router.put('/:id', (req, res) => {
   try {
     const row = db.prepare('SELECT * FROM usage_log WHERE id = ?').get(req.params.id);
     if (!row) return res.status(404).json({ error: 'Not found' });
-    const fields = ['project_id','material','operation','project_name','duration_min',
-                    'file_used','setting_id','outcome','notes','job_date','status','user_id'];
+    const fields = ['project_id','duration_min','file_used','outcome','notes','job_date','status','user_id'];
     const updates = [];
     const values = [];
     for (const f of fields) {

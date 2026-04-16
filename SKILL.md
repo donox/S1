@@ -20,7 +20,7 @@ The system is evolving through five phases. Each phase leaves the app fully func
 | 2 | Settings lineage + profiles | Parent-child setting versioning; material profiles as grouping unit | **Complete** |
 | 3 | Session → Runs | Sessions become containers; runs are individual laser jobs | **Complete** |
 | 4 | Artifacts + modifiers | Named artifact types with parameter deltas | **Complete** |
-| 5 | Cleanup | Remove deprecated columns; final stats/dashboard update | **Current** |
+| 5 | Cleanup | Remove deprecated columns; final stats/dashboard update | **Complete** |
 | 6 | UI framework redesign | Replace vanilla CSS/JS frontend with Bootstrap (or equivalent) | Pending |
 
 ### Phase 3 known gaps (deferred, not blocking)

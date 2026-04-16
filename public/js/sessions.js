@@ -97,8 +97,6 @@ window.sessionsInit = async function () {
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
               <span style="color:var(--accent);font-size:1.1rem">●</span>
               <strong>Session in progress</strong>
-              ${session.material ? `<span class="badge">${session.material}</span>` : ''}
-              ${session.operation ? `<span class="badge">${session.operation}</span>` : ''}
             </div>
             ${session.project_name_resolved ? `<div style="font-size:0.85rem;color:var(--text-muted)">Project: ${session.project_name_resolved}</div>` : ''}
             ${session.user_name ? `<div style="font-size:0.85rem;color:var(--text-muted)">User: ${session.user_name}</div>` : ''}
@@ -549,9 +547,7 @@ window.sessionsInit = async function () {
                 ? `<div style="font-size:0.875rem;color:var(--text-muted)">
                      Project: <strong style="color:var(--text)">${session.project_name_resolved}</strong>
                    </div>`
-                : session.project_name
-                  ? `<div style="font-size:0.875rem;color:var(--text-muted)">Project: ${session.project_name}</div>`
-                  : `<div style="font-size:0.875rem;color:var(--text-muted)">Standalone session</div>`}
+                : `<div style="font-size:0.875rem;color:var(--text-muted)">Standalone session</div>`}
             </div>
             <button class="btn btn-secondary btn-sm" id="close-detail" style="flex-shrink:0">✕ Close</button>
           </div>
@@ -1039,9 +1035,8 @@ window.sessionsInit = async function () {
       tbody.innerHTML = rows.map(r => `
         <tr data-id="${r.id}">
           <td>${r.job_date}</td>
-          <td>${r.project_name_resolved ?? r.project_name ?? '—'}</td>
-          <td>${r.material ?? '—'}</td>
-          <td>${r.operation ? `<span class="badge">${r.operation}</span>` : '—'}</td>
+          <td>${r.project_name_resolved ?? '—'}</td>
+          <td style="text-align:center">${r.run_count ?? 0}</td>
           <td>${r.duration_min != null ? r.duration_min + ' min' : '—'}</td>
           <td style="color:${OUTCOME_COLOR[r.outcome]??'inherit'}">${r.outcome ?? '—'}</td>
           <td><span class="badge">${STATUS_BADGE[r.status] ?? r.status}</span></td>
@@ -1051,7 +1046,7 @@ window.sessionsInit = async function () {
           </td>
         </tr>`).join('');
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="8" class="banner banner-error">${e.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="banner banner-error">${e.message}</td></tr>`;
     }
   }
 

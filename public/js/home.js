@@ -133,9 +133,8 @@ window.homeInit = async function () {
   }
 
   async function showPlanForm() {
-    const projects  = await fetch('/api/projects?status=active').then(r => r.json());
-    const settings  = await fetch('/api/settings').then(r => r.json());
-    const formEl    = document.getElementById('plan-session-form');
+    const projects = await fetch('/api/projects?status=active').then(r => r.json());
+    const formEl   = document.getElementById('plan-session-form');
     document.getElementById('btn-plan-session').style.display = 'none';
     formEl.style.display = 'block';
     formEl.innerHTML = `
@@ -147,29 +146,11 @@ window.homeInit = async function () {
             ${projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
           </select>
         </div>
-        <div>
-          <label>Material <small title="Never laser PVC/vinyl">⚠</small></label>
-          <input id="ps-material" type="text" placeholder="e.g. Walnut" style="min-width:120px">
-        </div>
-        <div>
-          <label>Operation</label>
-          <select id="ps-operation">
-            <option value="">—</option>
-            <option value="engrave">Engrave</option>
-            <option value="score">Score</option>
-            <option value="cut">Cut</option>
-            <option value="mixed">Mixed</option>
-          </select>
-        </div>
-        <div style="flex:1">
-          <label>Setting <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
-          <select id="ps-setting">
-            <option value="">—</option>
-            ${settings.map(s => `<option value="${s.id}">${s.material} / ${s.operation} — ${s.power}%${s.role==='confirmed'?' ✓':''}</option>`).join('')}
-          </select>
-        </div>
       </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
+      <p style="font-size:0.8rem;color:var(--text-muted);margin:6px 0 8px">
+        Add material, settings, and runs after beginning the session.
+      </p>
+      <div style="display:flex;gap:8px">
         <button class="btn btn-primary btn-sm" id="ps-create">Create Plan</button>
         <button class="btn btn-secondary btn-sm" id="ps-cancel">Cancel</button>
       </div>
@@ -178,17 +159,14 @@ window.homeInit = async function () {
     document.getElementById('ps-cancel').onclick = loadSessionContext;
     document.getElementById('ps-create').onclick = async () => {
       const payload = {
-        project_id:  +document.getElementById('ps-project').value  || null,
-        material:    document.getElementById('ps-material').value.trim() || null,
-        operation:   document.getElementById('ps-operation').value || null,
-        setting_id:  +document.getElementById('ps-setting').value  || null,
-        status:      'planned',
+        project_id: +document.getElementById('ps-project').value || null,
+        job_date:   new Date().toISOString().slice(0, 10),
+        status:     'planned',
       };
       try {
-        // Create as planned session (status field via direct INSERT)
         const r = await fetch('/api/usage', {
           method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ ...payload, job_date: new Date().toISOString().slice(0, 10), status: 'planned' }),
+          body: JSON.stringify(payload),
         });
         const data = await r.json();
         if (!r.ok) throw new Error(data.error);
@@ -213,8 +191,6 @@ window.homeInit = async function () {
           <div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span class="badge" style="color:var(--accent2)">Planned</span>
-              ${session.material ? `<strong>${session.material}</strong>` : ''}
-              ${session.operation ? `<span class="badge">${session.operation}</span>` : ''}
             </div>
             ${session.project_name_resolved ? `<div style="font-size:0.95rem;font-weight:600;margin-top:6px">Project: ${session.project_name_resolved}</div>` : ''}
             <div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">
@@ -314,8 +290,6 @@ window.homeInit = async function () {
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span style="color:var(--accent)">●</span>
               <strong>Session in progress</strong>
-              ${session.material ? `<span class="badge">${session.material}</span>` : ''}
-              ${session.operation ? `<span class="badge">${session.operation}</span>` : ''}
             </div>
             ${session.project_name_resolved ? `<div style="font-size:0.95rem;font-weight:600;margin-top:6px">Project: ${session.project_name_resolved}</div>` : ''}
             <div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">
@@ -434,19 +408,37 @@ window.homeInit = async function () {
 
   await loadProjects();
 
-  // ── Recent sessions ────────────────────────────────────────────────
+  // ── Stats strip + recent sessions ─────────────────────────────────
   try {
-    const rows   = await fetch('/api/usage').then(r => r.json());
-    const tbody  = document.getElementById('recent-sessions');
+    const [rows, artifacts] = await Promise.all([
+      fetch('/api/usage').then(r => r.json()),
+      fetch('/api/artifacts').then(r => r.json()).catch(() => []),
+    ]);
+    const completed  = rows.filter(r => r.status === 'completed');
+    const totalRuns  = rows.reduce((s, r) => s + (r.run_count ?? 0), 0);
+    const successRate = completed.length
+      ? Math.round(completed.filter(r => r.outcome === 'success').length / completed.length * 100)
+      : 0;
+    const statsEl = document.getElementById('home-stats');
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <div class="stat-box"><div class="stat-val">${rows.length}</div><div class="stat-lbl">Sessions</div></div>
+        <div class="stat-box"><div class="stat-val">${totalRuns}</div><div class="stat-lbl">Total Runs</div></div>
+        <div class="stat-box"><div class="stat-val">${completed.length}</div><div class="stat-lbl">Completed</div></div>
+        <div class="stat-box"><div class="stat-val">${successRate}%</div><div class="stat-lbl">Success Rate</div></div>
+        <div class="stat-box"><div class="stat-val">${artifacts.length}</div><div class="stat-lbl">Artifacts</div></div>`;
+    }
+    const tbody = document.getElementById('recent-sessions');
     const OUTCOME_COLOR = { success: '#27ae60', partial: '#f5a623', failed: '#c0392b' };
+    const STATUS_BADGE  = { in_progress: '● Active', completed: 'Done', aborted: 'Aborted', planned: 'Planned' };
     tbody.innerHTML = rows.slice(0, 8).length
       ? rows.slice(0, 8).map(r => `
           <tr>
             <td>${r.job_date}</td>
-            <td>${r.project_name_resolved ?? r.project_name ?? '—'}</td>
-            <td>${r.material ?? '—'}</td>
-            <td>${r.operation ? `<span class="badge">${r.operation}</span>` : '—'}</td>
+            <td>${r.project_name_resolved ?? '—'}</td>
+            <td style="text-align:center">${r.run_count ?? 0}</td>
             <td style="color:${OUTCOME_COLOR[r.outcome]??'inherit'}">${r.outcome ?? '—'}</td>
+            <td><span class="badge">${STATUS_BADGE[r.status] ?? r.status}</span></td>
           </tr>`).join('')
       : '<tr><td colspan="5" style="color:var(--text-muted)">No sessions logged yet.</td></tr>';
   } catch (_) {}
