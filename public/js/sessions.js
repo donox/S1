@@ -8,6 +8,7 @@ window.sessionsInit = async function () {
   let currentDetailSessionId = null;  // tracks which session the detail panel is showing
   let cachedRunSettings  = [];        // all material_settings rows, for run form setting picker
   let cachedRunMaterials = [];        // sorted unique material names, for run form datalist
+  let cachedArtifacts    = [];        // all artifacts, for run form artifact picker
 
   async function apiFetch(url, opts) {
     const r = await fetch(url, opts);
@@ -53,6 +54,7 @@ window.sessionsInit = async function () {
     ]);
     cachedRunSettings  = settings;
     cachedRunMaterials = [...new Set(settings.map(s => s.material))].sort();
+    try { cachedArtifacts = await apiFetch('/api/artifacts'); } catch (_) { cachedArtifacts = []; }
     const projSel = document.getElementById('ss-project');
     projects.forEach(p => {
       const o = document.createElement('option');
@@ -254,20 +256,42 @@ window.sessionsInit = async function () {
 
   // ── Runs section ──────────────────────────────────────────────────
 
-  function renderRunSettingRow(s, runId) {
+  // fmtParam: show run override, or base+delta→effective, or plain base
+  function fmtParam(runOverride, base, delta, unit) {
+    if (runOverride != null) return `<strong>${runOverride}${unit}</strong>`;
+    if (base == null) return null;
+    if (!delta) return `${base}${unit}`;
+    const effective = base + delta;
+    const sign = delta > 0 ? '+' : '';
+    return `${base}${unit}<span style="color:var(--accent2);font-size:0.75em"> ${sign}${delta}→</span><strong>${effective}${unit}</strong>`;
+  }
+
+  function renderRunSettingRow(s, runId, artifact) {
     // effective_operation is pre-computed by the API (COALESCE(rs.operation, ms.operation))
     const op     = s.effective_operation;
-    const power  = s.power          ?? s.setting_power;
-    const speed  = s.speed          ?? s.setting_speed;
-    const lpi    = s.lines_per_inch ?? s.setting_lpi;
-    const passes = s.passes         ?? s.setting_passes;
-    const focus  = s.focus_offset_mm ?? s.setting_focus;
     const params = [];
-    if (power  != null) params.push(`${power}%`);
-    if (speed  != null) params.push(`${speed}mm/sec`);
-    if (lpi    != null) params.push(`${lpi} LPI`);
-    if (passes != null && passes > 1) params.push(`×${passes}`);
-    if (focus  != null && focus  !== 0) params.push(`focus${focus > 0 ? '+' : ''}${focus}mm`);
+    const pwr = fmtParam(s.power, s.setting_power, artifact?.power_delta, '%');
+    const spd = fmtParam(s.speed, s.setting_speed, artifact?.speed_delta, 'mm/sec');
+    const lpiVal = s.lines_per_inch ?? s.setting_lpi;
+    const passes = s.passes ?? s.setting_passes;
+    const foc = fmtParam(s.focus_offset_mm, s.setting_focus, artifact?.focus_delta, 'mm');
+    const passDelta = artifact?.passes_delta;
+    const passBase = passes;
+    let passStr = null;
+    if (passBase != null) {
+      if (passDelta) {
+        const eff = passBase + passDelta;
+        const sign = passDelta > 0 ? '+' : '';
+        passStr = `×${passBase}<span style="color:var(--accent2);font-size:0.75em"> ${sign}${passDelta}→</span><strong>×${eff}</strong>`;
+      } else if (passBase > 1) {
+        passStr = `×${passBase}`;
+      }
+    }
+    if (pwr  != null) params.push(pwr);
+    if (spd  != null) params.push(spd);
+    if (lpiVal != null) params.push(`${lpiVal} LPI`);
+    if (passStr != null) params.push(passStr);
+    if (foc  != null && (s.focus_offset_mm ?? s.setting_focus) !== 0) params.push(`focus ${foc}`);
     return `
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;
                   font-size:0.82rem;margin-bottom:3px;padding:2px 0">
@@ -376,6 +400,7 @@ window.sessionsInit = async function () {
                        background:var(--surface);border:1px solid var(--border);
                        border-radius:3px;padding:1px 5px">#${run.run_number}</span>
           ${run.material ? `<strong style="font-size:0.9rem">${run.material}</strong>` : '<em style="color:var(--text-muted);font-size:0.85rem">no material</em>'}
+          ${run.artifact_name ? `<span style="font-size:0.78rem;color:var(--accent2);background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px">${run.artifact_name}</span>` : ''}
           ${run.outcome  ? `<span style="color:${OUTCOME_COLOR[run.outcome]??'inherit'};font-size:0.82rem">${run.outcome}</span>` : ''}
           <div style="display:flex;gap:4px;margin-left:auto;flex-shrink:0">
             <button class="btn btn-secondary btn-sm run-toggle-obs" data-run-id="${run.id}">Obs ▾</button>
@@ -387,7 +412,7 @@ window.sessionsInit = async function () {
         <!-- Per-setting parameter rows -->
         <div id="run-settings-${run.id}" style="padding-left:4px">
           ${hasSettings
-            ? run.settings.map(s => renderRunSettingRow(s, run.id)).join('')
+            ? run.settings.map(s => renderRunSettingRow(s, run.id, run)).join('')
             : '<span style="color:var(--text-muted);font-size:0.8rem">No settings yet.</span>'}
         </div>
 
@@ -443,6 +468,9 @@ window.sessionsInit = async function () {
 
   function buildRunForm(sessionId, run = null) {
     const isEdit = !!run;
+    const artifactOpts = cachedArtifacts.map(a =>
+      `<option value="${a.id}" ${a.id === run?.artifact_id ? 'selected' : ''}>${a.name}</option>`
+    ).join('');
     return `
       <div style="margin-top:10px;padding:12px;background:var(--surface2);border-radius:var(--radius)">
         <strong style="font-size:0.9rem">${isEdit ? `Edit Run #${run.run_number}` : 'Add Run'}</strong>
@@ -454,6 +482,13 @@ window.sessionsInit = async function () {
             <datalist id="rf-mat-list">
               ${cachedRunMaterials.map(m => `<option value="${m}">`).join('')}
             </datalist>
+          </div>
+          <div>
+            <label>Artifact <small style="color:var(--text-muted)">(optional)</small></label>
+            <select id="rf-artifact">
+              <option value="">— None —</option>
+              ${artifactOpts}
+            </select>
           </div>
           <div style="flex:1">
             <label>File used</label>
@@ -698,11 +733,12 @@ window.sessionsInit = async function () {
     };
     document.getElementById('rf-save').onclick = async () => {
       const payload = {
-        session_id: sessionId,
-        material:   document.getElementById('rf-material').value.trim() || null,
-        file_used:  document.getElementById('rf-file').value.trim()     || null,
-        outcome:    document.getElementById('rf-outcome').value         || null,
-        notes:      document.getElementById('rf-notes').value.trim()    || null,
+        session_id:  sessionId,
+        material:    document.getElementById('rf-material').value.trim() || null,
+        artifact_id: +document.getElementById('rf-artifact').value       || null,
+        file_used:   document.getElementById('rf-file').value.trim()     || null,
+        outcome:     document.getElementById('rf-outcome').value         || null,
+        notes:       document.getElementById('rf-notes').value.trim()    || null,
       };
       try {
         if (run) {
@@ -839,8 +875,10 @@ window.sessionsInit = async function () {
         });
         const settingsDiv = document.getElementById(`run-settings-${runId}`);
         if (settingsDiv) {
+          let runArtifact = null;
+          try { const rr = await apiFetch(`/api/runs/${runId}`); runArtifact = rr; } catch (_) {}
           settingsDiv.innerHTML = updatedSettings.length
-            ? updatedSettings.map(s => renderRunSettingRow(s, +runId)).join('')
+            ? updatedSettings.map(s => renderRunSettingRow(s, +runId, runArtifact)).join('')
             : '<span style="color:var(--text-muted);font-size:0.8rem">No settings yet.</span>';
         }
         const formDiv = document.getElementById(`run-setting-form-${runId}`);
@@ -869,8 +907,10 @@ window.sessionsInit = async function () {
         const updatedSettings = await apiFetch(`/api/runs/${runId}/settings/${sid}`, { method: 'DELETE' });
         const settingsDiv = document.getElementById(`run-settings-${runId}`);
         if (settingsDiv) {
+          let runArtifact = null;
+          try { const rr = await apiFetch(`/api/runs/${runId}`); runArtifact = rr; } catch (_) {}
           settingsDiv.innerHTML = updatedSettings.length
-            ? updatedSettings.map(s => renderRunSettingRow(s, runId)).join('')
+            ? updatedSettings.map(s => renderRunSettingRow(s, runId, runArtifact)).join('')
             : '<span style="color:var(--text-muted);font-size:0.8rem">No settings yet.</span>';
         }
       } catch (err) { showBanner(err.message); }

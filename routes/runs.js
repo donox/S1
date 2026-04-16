@@ -23,9 +23,12 @@ router.get('/', (req, res) => {
   try {
     if (!req.query.session_id) return res.status(400).json({ error: 'session_id is required' });
     const rows = db.prepare(`
-      SELECT r.*, sf.profile_name AS family_name
+      SELECT r.*, sf.profile_name AS family_name,
+             a.name AS artifact_name, a.power_delta, a.speed_delta,
+             a.focus_delta, a.passes_delta
       FROM session_runs r
       LEFT JOIN setting_families sf ON sf.id = r.family_id
+      LEFT JOIN artifacts        a  ON a.id  = r.artifact_id
       WHERE r.session_id = ?
       ORDER BY r.run_number
     `).all(req.query.session_id);
@@ -39,9 +42,12 @@ router.get('/', (req, res) => {
 router.get('/:id', (req, res) => {
   try {
     const run = db.prepare(`
-      SELECT r.*, sf.profile_name AS family_name
+      SELECT r.*, sf.profile_name AS family_name,
+             a.name AS artifact_name, a.power_delta, a.speed_delta,
+             a.focus_delta, a.passes_delta
       FROM session_runs r
       LEFT JOIN setting_families sf ON sf.id = r.family_id
+      LEFT JOIN artifacts        a  ON a.id  = r.artifact_id
       WHERE r.id = ?
     `).get(req.params.id);
     if (!run) return res.status(404).json({ error: 'Not found' });
@@ -84,7 +90,7 @@ router.put('/:id', (req, res) => {
     const run = db.prepare('SELECT * FROM session_runs WHERE id = ?').get(req.params.id);
     if (!run) return res.status(404).json({ error: 'Not found' });
 
-    const fields = ['material','file_used','outcome','notes','started_at','ended_at'];
+    const fields = ['material','artifact_id','file_used','outcome','notes','started_at','ended_at'];
     const updates = [], values = [];
     for (const f of fields) {
       if (f in req.body) { updates.push(`${f} = ?`); values.push(req.body[f]); }

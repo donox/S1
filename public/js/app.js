@@ -3,6 +3,7 @@ const PAGES = {
   projects:  { partial: '/pages/projects.html',   module: '/js/projects.js'  },
   sessions:  { partial: '/pages/sessions.html',   module: '/js/sessions.js'  },
   settings:  { partial: '/pages/settings.html',   module: '/js/settings.js'  },
+  artifacts: { partial: '/pages/artifacts.html',  module: '/js/artifacts.js' },
   docs:      { partial: '/pages/docs.html',        module: '/js/docs.js'      },
   notes:     { partial: '/pages/notes.html',       module: '/js/notes.js'     },
   files:     { partial: '/pages/files.html',       module: '/js/files.js'     },

@@ -30,6 +30,8 @@ const MIGRATIONS = [
   `INSERT OR IGNORE INTO session_runs (session_id, run_number, material, operation, setting_id, file_used, outcome, notes)
    SELECT id, 1, material, operation, setting_id, file_used, outcome, notes
    FROM usage_log WHERE material IS NOT NULL`,
+  // Phase 4 — artifacts
+  `ALTER TABLE session_runs ADD COLUMN artifact_id INTEGER REFERENCES artifacts(id) ON DELETE SET NULL`,
   // Phase 3b — run_settings: migrate any existing session_runs.setting_id entries
   `INSERT OR IGNORE INTO run_settings (run_id, setting_id, sort_order)
    SELECT id, setting_id, 0 FROM session_runs WHERE setting_id IS NOT NULL`,

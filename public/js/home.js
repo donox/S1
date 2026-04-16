@@ -5,6 +5,7 @@ window.homeInit = async function () {
     { page: 'projects',  label: 'Projects',       abbr: 'PRJ', color: '#27ae60', desc: 'Multi-session work' },
     { page: 'sessions',  label: 'Sessions',        abbr: 'SES', color: '#3498db', desc: 'Log & track sessions' },
     { page: 'settings',  label: 'Materials',       abbr: 'MAT', color: '#e94560', desc: 'Power, speed, LPI' },
+    { page: 'artifacts', label: 'Artifacts',       abbr: 'ART', color: '#8e44ad', desc: 'Named pieces + param deltas' },
     { page: 'docs',      label: 'Docs',            abbr: 'DOC', color: '#f5a623', desc: 'Search the manual' },
     { page: 'notes',     label: 'Notes',           abbr: 'NTS', color: '#9b59b6', desc: 'Tips & learning' },
     { page: 'files',     label: 'Files',           abbr: 'FIL', color: '#1abc9c', desc: 'Project files' },

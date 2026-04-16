@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS usage_log (
   created_at   TEXT    DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS artifacts (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  name              TEXT NOT NULL UNIQUE,
+  description       TEXT,
+  default_family_id INTEGER REFERENCES setting_families(id) ON DELETE SET NULL,
+  power_delta       INTEGER,  -- ±% applied on top of base setting
+  speed_delta       INTEGER,  -- ±mm/sec
+  focus_delta       REAL,     -- ±mm
+  passes_delta      INTEGER,  -- ±passes
+  created_at        TEXT DEFAULT (datetime('now')),
+  updated_at        TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS session_runs (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   session_id      INTEGER NOT NULL REFERENCES usage_log(id) ON DELETE CASCADE,

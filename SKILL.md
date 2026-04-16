@@ -19,8 +19,8 @@ The system is evolving through five phases. Each phase leaves the app fully func
 | 1 | Users | Add named local users; owner on projects and sessions | **Complete** |
 | 2 | Settings lineage + profiles | Parent-child setting versioning; material profiles as grouping unit | **Complete** |
 | 3 | Session → Runs | Sessions become containers; runs are individual laser jobs | **Complete** |
-| 4 | Artifacts + modifiers | Named artifact types with parameter deltas | Pending |
-| 5 | Cleanup | Remove deprecated columns; final stats/dashboard update | Pending |
+| 4 | Artifacts + modifiers | Named artifact types with parameter deltas | **Complete** |
+| 5 | Cleanup | Remove deprecated columns; final stats/dashboard update | **Current** |
 | 6 | UI framework redesign | Replace vanilla CSS/JS frontend with Bootstrap (or equivalent) | Pending |
 
 ### Phase 3 known gaps (deferred, not blocking)
@@ -138,7 +138,48 @@ A **run** is one laser job within a session. One session can contain many runs.
   fields. This migration must be idempotent (`INSERT OR IGNORE` keyed on session_id
   where no run already exists).
 
-### Artifacts and modifiers [PLANNED — Phase 4]
+### Phase 4 known gaps (deferred, not blocking)
+
+1. **Artifact picker on "Start a New Session" form.** The run form (edit/add run)
+   gained an artifact picker, but the `/api/usage/start` quick-start form does not
+   pass `artifact_id`. The quick-start creates Run #1 automatically; that run could
+   carry an artifact if one were selected up front.
+
+2. **Artifact name not shown on session list table.** The past sessions table shows
+   material/outcome columns; artifact association is only visible inside the detail panel.
+
+---
+
+### Phase 5 — Cleanup scope
+
+The goals of Phase 5 are to remove stale legacy fields from the UI and API,
+and to update the home dashboard and session list to reflect the runs-based model.
+
+**Deprecated `usage_log` columns** (populated by Phase 3 migration but no longer
+the source of truth — runs own this data now):
+- `material` — was copied to session_runs.material; no longer updated on session write
+- `operation` — same; lives on run_settings.operation
+- `setting_id` — per-run setting lives in run_settings; session-level FK is unused
+- `project_name` — legacy free-text label; replaced by `project_id` FK
+- `duration_min` — computable from `started_at` / `ended_at`; redundant
+
+**Cleanup actions:**
+1. Stop writing `material`, `operation`, `setting_id`, `project_name` on new sessions;
+   stop reading them in queries (replace with run-derived data where needed).
+2. Session list table: replace `material` and `operation` columns with a **run count**
+   column derived from a subquery or JOIN on `session_runs`.
+3. Home dashboard stats strip: add run count, artifact count, total sessions.
+4. Session detail header: remove fallback to legacy `material`/`operation` fields.
+5. Decide on actual `ALTER TABLE … DROP COLUMN` vs. simply ignoring the columns.
+   SQLite >= 3.35.0 supports DROP COLUMN; check `SELECT sqlite_version()` at startup.
+   If supported, add DROP COLUMN migrations to `db/db.js`; else just stop reading them.
+
+**Do not** remove `duration_min` from the API response until the session list no longer
+displays it; it is still shown in the session detail panel.
+
+---
+
+### Artifacts and modifiers [COMPLETE — Phase 4]
 - An **artifact** is a named thing being made (coaster, box lid, pendant, sign).
   It lives in an `artifacts` table and can optionally have a `default_family_id`
   (the material profile most commonly used for it).
