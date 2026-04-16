@@ -54,6 +54,106 @@ Read `SKILL-impl.md` to understand *how* it is currently built.
 
 ---
 
+## Planned feature track: External knowledge integration
+
+The xTool community, xTool's own documentation, and the wider laser-cutting community
+(Reddit r/lasercutting, forums, YouTube) contain extensive parameter tables and
+material guidance that the app currently has no way to incorporate. The goal is to make
+that knowledge accessible from within the app without creating an unmanageable
+maintenance burden.
+
+**Core design principle:** External knowledge enters the system at the `candidate` role
+and must be personally validated on your specific machine before it becomes `confirmed`.
+This preserves the meaning of `confirmed` — it always means *you* tested it. The `source`
+field makes clear where a setting originated.
+
+### Stage 1 — Source attribution on `material_settings` (data model change)
+
+**Why first:** Every subsequent stage imports settings. Without a `source` field the
+imported settings are indistinguishable from personal ones, which undermines the
+confirmation workflow.
+
+Changes:
+- Add `source` column to `material_settings`:
+  `TEXT DEFAULT 'personal' CHECK(source IN ('personal','xtool-official','community','other'))`
+- Add `source_url` column (TEXT, nullable) for traceability back to the original page
+- Migration in `db/db.js` MIGRATIONS array (safe to run idempotently)
+- Update `schema.sql` DDL
+- `db/seed.js`: mark all existing seeded rows as `source = 'personal'` (they came from
+  the user's own manual transcription)
+- Settings page UI: show a small source badge on each card (e.g. "xTool" in blue,
+  "community" in amber, "personal" plain). Visually distinguish, don't hide.
+- `GET /api/settings` and `POST /api/settings`: pass `source` and `source_url` through
+- Filter bar: optional source filter so you can view only community settings or only
+  your own
+
+### Stage 2 — Structured settings import
+
+**Why second:** Once source attribution exists, you can import in bulk without losing
+provenance.
+
+Changes:
+- `db/import-settings.js` script: reads a JSON or CSV file, inserts rows as `candidate`
+  with `source` and `source_url` set. Idempotent — skip rows that already exist
+  (match on material + operation + power + speed as a rough dedup key, or use a
+  `source_url` unique index).
+- Populate from: xTool's official parameter tables, community-curated lists. Do not
+  auto-confirm anything. The import script produces candidates only.
+- Consider: a simple admin endpoint `POST /api/settings/import` that accepts a JSON
+  array, for future UI-driven import (Stage 4 territory).
+
+### Stage 3 — Narrative knowledge in `docs_sections`
+
+**Why third:** Parameter rows in `material_settings` can't capture advice like "acrylic
+tends to melt at the edges if speed is too low — try two passes faster rather than one
+pass slow." That knowledge belongs in docs, which already have full-text search.
+
+Changes:
+- Add `source` (TEXT) and `source_url` (TEXT) columns to `docs_sections` (migration)
+- Update `schema.sql` and the FTS5 triggers (triggers fire on `docs_sections` changes,
+  so no trigger changes needed — they'll pick up new rows automatically)
+- `db/import-docs.js` script: reads structured Markdown or JSON, inserts into
+  `docs_sections` tagged with source. Idempotent via `INSERT OR IGNORE` on title+section.
+- Initial content to import: xTool's material-specific guidance pages, community
+  technique articles (summarised, not scraped verbatim — copyright awareness)
+- Docs UI: show source badge on doc cards; filter sidebar gains a Source filter
+
+### Stage 4 — Curated external links on Quick Reference
+
+**Why last (and lightest):** Some knowledge is best left external — xTool updates
+their official docs, community wikis evolve. A curated link list is low maintenance
+and always points to current information.
+
+Changes:
+- Add an "External Resources" section to `public/pages/reference.html` (static HTML,
+  no API needed)
+- Organised by category: Official xTool docs, Community parameter databases,
+  Technique guides, Software (XCS, LightBurn)
+- Review and update links periodically — these will go stale
+
+### What goes where — decision guide
+
+| Knowledge type | Destination | Why |
+|----------------|-------------|-----|
+| Specific power/speed/LPI numbers | `material_settings` as `candidate` | Fits the confirmation workflow; searchable |
+| "This material behaves like X" narrative | `docs_sections` | FTS already built; not a parameter row |
+| xTool's current official page | External link on Quick Reference | Goes stale; better to link than copy |
+| Community forum thread | `source_url` on a setting, or docs excerpt | Link for traceability; extract the parameter |
+| Your own validated result | `material_settings` as `confirmed` | This is what `confirmed` means |
+
+### Skill file impact
+
+When Stage 1 ships, add to `SKILL-domain.md`:
+- The `source` field and its allowed values
+- The rule that external settings always enter as `candidate`
+- The rule that `confirmed` always means personally validated on your machine
+
+When Stages 2–3 ship, add to `SKILL-impl.md`:
+- The import script conventions and dedup strategy
+- The `source_url` unique-index approach (if adopted)
+
+---
+
 ## Phase 6 — UI redesign notes
 
 Prerequisites met (Phases 1–5 complete, data model stable). Before starting:
