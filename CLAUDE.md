@@ -3,9 +3,12 @@
 This file is the authoritative project reference for Claude Code.
 Read it fully before making any changes.
 
-**Also read `SKILL.md`** before making any changes. It captures domain rules,
-magic numbers, architecture assumptions, and repeated patterns that are not
-obvious from the code. CLAUDE.md describes *what* is built; SKILL.md explains *why*.
+**Also read the SKILL files** before making any changes:
+- `SKILL.md` — index, upgrade roadmap, known gaps, and working-with-this-project notes
+- `SKILL-domain.md` — laser physics, business rules, and domain "why"s (stable across refactors)
+- `SKILL-impl.md` — code patterns, DB assumptions, magic numbers, CSS theme, implementation "why"s
+
+CLAUDE.md describes *what* is built. The SKILL files explain *why* and *how*.
 
 ---
 
