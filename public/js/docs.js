@@ -44,12 +44,15 @@ window.docsInit = async function () {
         </div>
       </div>`).join('');
 
-    // Expand on click
+    // Expand/collapse on click
     results.querySelectorAll('.doc-body').forEach((el, i) => {
       if (rows[i].body.length <= 140) return;
+      const preview = `${rows[i].body.slice(0, 140)}… <span class="text-primary">show more</span>`;
+      const full    = `${rows[i].body.replace(/\n/g, '<br>')} <span class="text-primary">show less</span>`;
       el.addEventListener('click', () => {
-        el.innerHTML = rows[i].body.replace(/\n/g, '<br>');
-        el.classList.remove('clickable', 'text-muted');
+        const expanded = el.dataset.expanded === '1';
+        el.innerHTML        = expanded ? preview : full;
+        el.dataset.expanded = expanded ? '0' : '1';
       });
     });
   }
@@ -80,6 +83,32 @@ window.docsInit = async function () {
 
   document.getElementById('docs-go').onclick = load;
   searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+
+  // ── Semantic search ───────────────────────────────────────────────
+  const semanticInput  = document.getElementById('docs-semantic');
+  const semanticStatus = document.getElementById('docs-semantic-status');
+
+  async function loadSimilar() {
+    const q = semanticInput.value.trim();
+    if (!q) return;
+    semanticStatus.textContent = 'Searching…';
+    try {
+      const rows = await apiFetch(`/api/docs/similar?context=${encodeURIComponent(q)}&limit=8`);
+      if (!rows.length) {
+        semanticStatus.textContent = 'No matches above threshold.';
+        results.innerHTML = '';
+        return;
+      }
+      semanticStatus.textContent = `${rows.length} result${rows.length !== 1 ? 's' : ''}`;
+      renderDocs(rows);
+    } catch (e) {
+      semanticStatus.textContent = 'Ollama unavailable — semantic search requires ollama running.';
+      results.innerHTML = '';
+    }
+  }
+
+  document.getElementById('docs-semantic-go').onclick = loadSimilar;
+  semanticInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadSimilar(); });
 
   await load();
 };

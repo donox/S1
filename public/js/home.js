@@ -381,8 +381,14 @@ window.homeInit = async function () {
         arrow.textContent = hidden ? '▾' : '▴';
       };
       wrap.querySelectorAll('.rel-doc-preview').forEach(el => {
-        el.querySelector('.clickable')?.addEventListener('click', () => {
-          el.innerHTML = decodeURIComponent(el.dataset.full).replace(/\n/g, '<br>');
+        const body    = decodeURIComponent(el.dataset.full);
+        const preview = `${body.slice(0, 120)}… <span class="text-primary clickable">more</span>`;
+        const full    = `${body.replace(/\n/g, '<br>')} <span class="text-primary clickable">less</span>`;
+        el.addEventListener('click', e => {
+          if (!e.target.classList.contains('clickable')) return;
+          const expanded      = el.dataset.expanded === '1';
+          el.innerHTML        = expanded ? preview : full;
+          el.dataset.expanded = expanded ? '0' : '1';
         });
       });
     } catch (_) {}

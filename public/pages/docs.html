@@ -32,6 +32,22 @@
       <button class="btn btn-primary btn-sm" id="docs-go">Search / Filter</button>
     </div>
   </div>
+  <div class="row g-2 align-items-end mt-2 pt-2 border-top">
+    <div class="col-md">
+      <label class="form-label small mb-1">
+        Semantic search
+        <span class="text-muted fw-normal">— describe what you're doing, not keywords</span>
+      </label>
+      <input class="form-control form-control-sm" id="docs-semantic" type="text"
+             placeholder="e.g. pine pre-treatment, reduce char on birch, cutting thick wood…">
+    </div>
+    <div class="col-auto align-self-end">
+      <button class="btn btn-secondary btn-sm" id="docs-semantic-go">Find Similar</button>
+    </div>
+    <div class="col-auto align-self-end">
+      <span class="text-muted small" id="docs-semantic-status"></span>
+    </div>
+  </div>
 </div>
 
 <div id="docs-results"></div>
