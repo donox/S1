@@ -156,18 +156,76 @@ When Stages 2–3 ship, add to `SKILL-impl.md`:
 
 ## Phase 6 — UI redesign notes
 
-Prerequisites met (Phases 1–5 complete, data model stable). Before starting:
+### Decided approach
 
-- Inventory every page and its features (Home, Sessions, Projects, Materials, Artifacts,
-  Docs, Notes, Files, Users, Quick Reference)
-- Confirm every API route is exercised and working
-- Document all inter-page navigation state (`window._autoExpandProjectId`, etc.)
-- Rewrite `SKILL-impl.md` to reflect the new frontend conventions
+**Framework:** Bootstrap 5.3 via CDN, `data-bs-theme="dark"` on `<html>`.
+No Bootswatch. No build step. No React/Vue/Webpack.
 
-Bootstrap via CDN is the leading candidate (no build step, maps cleanly to existing
-CSS custom-property palette). The backend (Express + SQLite routes) is unchanged.
-Keep or replace `public/js/app.js` router pattern — no React/Vue/build pipeline unless
-explicitly decided otherwise.
+**Theme:** A small `custom.css` overrides Bootstrap's CSS custom properties
+(`--bs-primary`, `--bs-body-bg`, etc.) to establish the project palette.
+All colour and typography lives here — no inline `style=` attributes anywhere
+in HTML or JS template literals.
+
+**Adoption level: fully idiomatic.** JS template literals use Bootstrap utility
+classes (`text-primary`, `d-flex`, `gap-2`, `small`, `fw-semibold`, etc.),
+not `style="color:var(--accent)"`. This is non-negotiable — a hybrid approach
+defeats the main purpose (community patterns, incremental evolution).
+
+**Bootstrap JS:** Used selectively. Toasts replace the current banner pattern.
+Collapse replaces manual show/hide. The inline-form patterns (observations,
+promote flows) are kept as-is — they are better UX than modals and there is
+a documented reason for them in `SKILL-impl.md`.
+
+**Backend:** Express + SQLite routes are completely unchanged.
+
+**Router:** `public/js/app.js` partial-injection SPA pattern and the
+`window.{page}Init` contract are preserved. Bootstrap does not require a
+different routing architecture.
+
+### Guiding frame: look / maintain / evolve
+
+This redesign is not primarily about aesthetics. The goal is a UI foundation
+that supports incremental feature growth without accumulating CSS debt. Three
+longer-term directions shape what "evolve" means here:
+
+1. **Project variety drive** — the app should push the user toward doing more
+   laser projects, not just record what happened. The home page needs to become
+   a "what do I do next" surface, not just a status display.
+
+2. **Community knowledge** — external knowledge integration (the source badge
+   work in Stages 1–3) will grow. Bootstrap's semantic colour system
+   (`text-warning`, `text-info`, etc.) is the right tool for making
+   personal vs. external content visually distinct.
+
+3. **AI approaches** — future sessions will explore having Claude reason over
+   observation history, flag correlations, and suggest parameter refinements.
+   AI-generated content needs a visual identity clearly distinct from
+   user-entered data. `custom.css` should reserve a slot for this even if
+   it is not implemented yet.
+
+### Phase 6 scope: foundation, not final form
+
+**In scope:**
+- Full idiomatic Bootstrap throughout — retire all inline style debt
+- Rethought home page structure (actionable, project-driving)
+- `custom.css` establishing the palette and any custom utility classes
+- `SKILL-impl.md` rewritten to document the new frontend conventions
+
+**Out of scope (future work after Phase 6):**
+- AI analysis features or insight views
+- Cross-session query UI
+- Making every page feature-complete beyond current functionality
+
+The measure of success: adding a new page or component feels fast and
+consistent because it draws from an established component vocabulary.
+
+### Prerequisites before starting
+
+1. Functionality audit — every page, every feature, every form behaviour
+2. Inter-page navigation state globals (`window._autoExpandProjectId`, etc.)
+3. Inline style inventory in JS files — what maps to which Bootstrap utility
+4. API route smoke-test — confirm every route is reachable
+5. Identify which Bootstrap JS components replace which hand-rolled patterns
 
 ---
 
