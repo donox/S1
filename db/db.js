@@ -46,6 +46,8 @@ const MIGRATIONS = [
   // Observation enrichment: outcome polarity + direct setting linkage
   `ALTER TABLE session_observations ADD COLUMN outcome TEXT CHECK(outcome IN ('positive','negative','neutral','unexpected'))`,
   `ALTER TABLE session_observations ADD COLUMN setting_id INTEGER REFERENCES material_settings(id) ON DELETE SET NULL`,
+  // Semantic search — embedding vectors (stored as JSON text)
+  `ALTER TABLE docs_sections ADD COLUMN embedding TEXT`,
 ];
 
 for (const sql of MIGRATIONS) {

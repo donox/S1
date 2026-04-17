@@ -19,6 +19,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 const fs   = require('fs');
 const path = require('path');
 const db   = require('./db');
+const { embed, ollamaAvailable, serializeEmbedding } = require('./embed');
 
 const VALID_SOURCES = ['personal', 'xtool-official', 'community', 'other'];
 
@@ -61,8 +62,11 @@ const findExisting = db.prepare(`
 `);
 
 const insertRow = db.prepare(`
-  INSERT INTO docs_sections (section, title, body, tags, source, source_url)
-  VALUES (@section, @title, @body, @tags, @source, @source_url)
+  INSERT INTO docs_sections (section, title, body, tags, source, source_url, embedding)
+  VALUES (@section, @title, @body, @tags, @source, @source_url, @embedding)
+`);
+const updateEmbedding = db.prepare(`
+  UPDATE docs_sections SET embedding = ? WHERE id = ?
 `);
 
 // --------------------------------------------------------------------------
@@ -109,6 +113,7 @@ const importAll = db.transaction(() => {
       tags:       raw.tags       ?? null,
       source,
       source_url: raw.source_url ?? null,
+      embedding:  null,
     };
 
     try {
@@ -121,18 +126,49 @@ const importAll = db.transaction(() => {
   }
 });
 
-console.log(`\nImporting ${rows.length} doc section(s) from ${path.basename(absPath)}...\n`);
-importAll();
+// Check Ollama availability once before the transaction
+let useEmbeddings = false;
+(async () => {
+  useEmbeddings = await ollamaAvailable();
+  if (useEmbeddings) console.log('  Ollama available — embeddings will be generated\n');
+  else               console.log('  Ollama not available — skipping embeddings (run embed-all.js later)\n');
+
+  console.log(`Importing ${rows.length} doc section(s) from ${path.basename(absPath)}...\n`);
+  importAll();
+
+  // Embed inserted rows (outside the transaction — Ollama calls are async)
+  if (useEmbeddings && inserted > 0) {
+    console.log('\nGenerating embeddings...');
+    const newRows = db.prepare(
+      'SELECT id, title, body, tags FROM docs_sections WHERE embedding IS NULL'
+    ).all();
+    for (const r of newRows) {
+      const text = [r.title, r.tags, r.body].filter(Boolean).join(' ');
+      const vec  = await embed(text);
+      if (vec) {
+        updateEmbedding.run(serializeEmbedding(vec), r.id);
+        console.log(`  embedded id=${r.id} "${r.title}"`);
+      } else {
+        console.log(`  embed failed id=${r.id} "${r.title}"`);
+      }
+    }
+  }
+
+  printSummary();
+})();
+
+function printSummary() {
 
 // --------------------------------------------------------------------------
-// Summary
+// Summary (called after async embedding step)
 // --------------------------------------------------------------------------
 
-console.log(`\n--- Import complete ---`);
-console.log(`  Inserted: ${inserted}`);
-console.log(`  Skipped:  ${skipped}`);
-console.log(`  Errors:   ${errors.length}`);
-if (errors.length) {
-  console.log('\nErrors:');
-  for (const e of errors) console.log(`  ! ${e}`);
+  console.log(`\n--- Import complete ---`);
+  console.log(`  Inserted: ${inserted}`);
+  console.log(`  Skipped:  ${skipped}`);
+  console.log(`  Errors:   ${errors.length}`);
+  if (errors.length) {
+    console.log('\nErrors:');
+    for (const e of errors) console.log(`  ! ${e}`);
+  }
 }

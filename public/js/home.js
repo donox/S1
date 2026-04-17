@@ -210,6 +210,8 @@ window.homeInit = async function () {
             </div>
           </div>
 
+          <div id="relevant-docs-wrap"></div>
+
           <div class="row g-3">
             <div class="col-md-6">
               <div class="d-flex justify-content-between align-items-center mb-2">
@@ -240,6 +242,7 @@ window.homeInit = async function () {
     buildChecklist(SETUP_ITEMS, 'setup-items', setupKey, session.id);
     buildChecklist(RUN_ITEMS,   'run-items',   runKey,   session.id);
     updateRunReady(session.id);
+    loadRelevantDocs(session);
 
     function flashCleared(spanId) {
       const el = document.getElementById(spanId);
@@ -306,6 +309,8 @@ window.homeInit = async function () {
                 title="Permanently delete this session">Delete</button>
             </div>
           </div>
+          <div id="relevant-docs-wrap"></div>
+
           <div class="row g-3 opacity-75">
             <div class="col-md-6">
               <strong class="small d-block mb-2">Setup Checklist</strong>
@@ -321,6 +326,7 @@ window.homeInit = async function () {
 
     buildChecklist(SETUP_ITEMS, 'setup-items', checklistKey(session.id, 'setup'), session.id, true);
     buildChecklist(RUN_ITEMS,   'run-items',   checklistKey(session.id, 'run'),   session.id, true);
+    loadRelevantDocs(session);
 
     document.getElementById('btn-continue-session').onclick = () => {
       if (typeof navigate === 'function') navigate('sessions');
@@ -335,6 +341,51 @@ window.homeInit = async function () {
       await fetch(`/api/usage/${session.id}`, { method: 'DELETE' });
       await loadSessionContext();
     };
+  }
+
+  // ── Relevant docs (semantic) ──────────────────────────────────────
+  async function loadRelevantDocs(session) {
+    const parts = [session.material, session.operation].filter(Boolean);
+    if (!parts.length) return;
+    const context = parts.join(' ');
+    try {
+      const docs = await fetch(`/api/docs/similar?context=${encodeURIComponent(context)}&limit=3`)
+        .then(r => r.json());
+      if (!docs.length) return;
+      const wrap = document.getElementById('relevant-docs-wrap');
+      if (!wrap) return;
+      wrap.innerHTML = `
+        <div class="mt-3 pt-3 border-top">
+          <div class="d-flex align-items-center gap-2 mb-2 clickable" id="rel-docs-toggle">
+            <span class="text-muted small fw-semibold">Relevant docs</span>
+            <span class="badge text-bg-secondary">${docs.length}</span>
+            <span class="text-muted small">▾</span>
+          </div>
+          <div id="rel-docs-body" class="d-none">
+            ${docs.map(d => `
+              <div class="border rounded px-3 py-2 mb-1 small">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <span class="badge text-bg-secondary">${d.section}</span>
+                  <span class="fw-semibold">${d.title}</span>
+                </div>
+                <div class="text-muted rel-doc-preview" data-full="${encodeURIComponent(d.body)}">
+                  ${d.body.slice(0, 120)}${d.body.length > 120 ? '… <span class="text-primary clickable">more</span>' : ''}
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+      document.getElementById('rel-docs-toggle').onclick = () => {
+        const body  = document.getElementById('rel-docs-body');
+        const arrow = document.querySelector('#rel-docs-toggle span:last-child');
+        const hidden = body.classList.toggle('d-none');
+        arrow.textContent = hidden ? '▾' : '▴';
+      };
+      wrap.querySelectorAll('.rel-doc-preview').forEach(el => {
+        el.querySelector('.clickable')?.addEventListener('click', () => {
+          el.innerHTML = decodeURIComponent(el.dataset.full).replace(/\n/g, '<br>');
+        });
+      });
+    } catch (_) {}
   }
 
   await loadSessionContext();
