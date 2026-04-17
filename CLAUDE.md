@@ -137,7 +137,6 @@ altering tables. The singleton executes it at every startup using
 
 **`material_settings`**
 Stores laser parameters. Each row is one tested combination.
-The `role` column was added via migration (not in original schema DDL).
 ```sql
 CREATE TABLE IF NOT EXISTS material_settings (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,12 +151,17 @@ CREATE TABLE IF NOT EXISTS material_settings (
   starred         INTEGER DEFAULT 0,     -- 1 = user bookmark (≠ confirmed)
   role            TEXT DEFAULT 'candidate'
                     CHECK(role IN ('candidate','confirmed','archived')),
+  source          TEXT DEFAULT 'personal'
+                    CHECK(source IN ('personal','xtool-official','community','other')),
+  source_url      TEXT,                  -- traceability back to origin page
   created_at      TEXT DEFAULT (datetime('now')),
   updated_at      TEXT DEFAULT (datetime('now'))
 );
 ```
 Role rules: exactly one `confirmed` per (material, operation) pair; confirming a
 new one atomically archives the previous. `archived` hidden from default GET.
+Source rules: external settings always enter as `candidate`; `confirmed` always
+means personally validated on your machine. `personal` is the default.
 
 **`projects`**
 One row per laser project (multi-session endeavour).
@@ -210,15 +214,21 @@ Captures discoveries, issues, and notes during or after a session.
 CREATE TABLE IF NOT EXISTS session_observations (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   session_id   INTEGER NOT NULL REFERENCES usage_log(id) ON DELETE CASCADE,
-  type         TEXT NOT NULL CHECK(type IN ('note','discovery','issue','question')),
+  run_id       INTEGER REFERENCES session_runs(id) ON DELETE CASCADE,
   content      TEXT NOT NULL,
+  type         TEXT DEFAULT 'note' CHECK(type IN ('note','discovery','issue','question')),
+  outcome      TEXT CHECK(outcome IN ('positive','negative','neutral','unexpected')),
+  setting_id   INTEGER REFERENCES material_settings(id) ON DELETE SET NULL,
   dismissed_at TEXT,
-  promoted_to  TEXT,               -- 'note' | 'setting' when promoted
+  promoted_to  TEXT,               -- 'learning_note' | 'material_setting' when promoted
+  promoted_id  INTEGER,            -- id of the created note or setting
   created_at   TEXT DEFAULT (datetime('now'))
 );
 ```
 Dismissed observations are soft-deleted; `DELETE /api/observations/purge` removes
-those older than 90 days.
+those older than 90 days. `outcome` records the valence of the finding (positive/
+negative/neutral/unexpected). `setting_id` directly pins an observation to a saved
+material setting for cross-session correlation queries.
 
 **`docs_sections`**
 Parsed manual content, searchable by full-text.
@@ -227,11 +237,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS docs_fts
   USING fts5(section, title, body, content='docs_sections', content_rowid='id');
 
 CREATE TABLE IF NOT EXISTS docs_sections (
-  id       INTEGER PRIMARY KEY AUTOINCREMENT,
-  section  TEXT NOT NULL,   -- top-level category e.g. "Techniques"
-  title    TEXT NOT NULL,   -- subsection heading
-  body     TEXT NOT NULL,   -- plain text content
-  tags     TEXT             -- comma-separated: "engraving,wood,paint"
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  section    TEXT NOT NULL,   -- top-level category e.g. "Techniques"
+  title      TEXT NOT NULL,   -- subsection heading
+  body       TEXT NOT NULL,   -- plain text content
+  tags       TEXT,            -- comma-separated: "engraving,wood,paint"
+  source     TEXT DEFAULT 'personal',  -- same values as material_settings.source
+  source_url TEXT             -- link to origin page for non-personal content
 );
 ```
 
@@ -413,12 +425,16 @@ The API returns `effective_operation` (COALESCE of own `operation` and linked se
 ### Observations — `routes/observations.js`
 
 ```
-GET    /api/observations             list; ?session_id=&run_id=&type=&dismissed=
-POST   /api/observations             create; requires session_id or run_id (session_id
-                                     auto-derived from run when only run_id provided)
-PUT    /api/observations/:id/dismiss soft-delete: sets dismissed_at
-POST   /api/observations/:id/promote/note  → creates learning_note, dismisses observation
-DELETE /api/observations/purge       removes dismissed observations older than 90 days
+GET    /api/observations                  list; ?session_id=&run_id=&type=&outcome=&dismissed=
+POST   /api/observations                  create; requires session_id or run_id (session_id
+                                          auto-derived from run when only run_id provided);
+                                          body: content, type, outcome, setting_id
+PUT    /api/observations/:id              update outcome and/or setting_id (partial OK)
+PUT    /api/observations/:id/dismiss      soft-delete: sets dismissed_at
+POST   /api/observations/:id/promote/note    → creates learning_note, dismisses observation
+POST   /api/observations/:id/promote/setting → creates material_setting candidate,
+                                               dismisses observation
+DELETE /api/observations/purge            removes dismissed observations older than 90 days
 ```
 
 ### Settings — `routes/settings.js`
@@ -432,15 +448,25 @@ DELETE /api/settings/:id             delete
 PUT    /api/settings/:id/star        toggle starred (0↔1)
 PUT    /api/settings/:id/confirm     atomic: archive existing confirmed for same
                                      material+operation, set this one confirmed
+POST   /api/settings/import          bulk import; body: { settings: [...] }; all rows
+                                     forced to role='candidate'; returns { inserted,
+                                     skipped, errors }
 ```
+
+Bulk import script: `node db/import-settings.js <file.json>` — same logic as the
+API endpoint. See `db/sample-import.json` for format.
 
 ### Docs — `routes/docs.js`
 
 ```
-GET    /api/docs                     list sections; ?section=&tags=
-GET    /api/docs/search?q=           full-text search via FTS5
+GET    /api/docs                     list sections; ?section=&tags=&source=
+GET    /api/docs/search?q=           full-text search via FTS5 (source filter applied
+                                     client-side after FTS results returned)
 GET    /api/docs/:id                 single section
 ```
+
+Bulk import: `node db/import-docs.js <file.json>` — idempotent, deduplicates on
+`(section, title)`. See `db/sample-docs.json` for format.
 
 ### Notes — `routes/notes.js`
 
@@ -638,9 +664,22 @@ design decisions.
   power/speed grid to test (like XCS's Material Test Array feature)
 - Export settings to CSV for sharing
 - Photo attachments on usage log entries (store path, serve as static)
-- Dark mode toggle (CSS custom properties already make this easy)
 - LightBurn `.lbrn` file parser to extract embedded settings and
   auto-populate a usage log entry
+- Run observations: "→ Note" promote button (session-level has it;
+  run-level only has Dismiss — same API endpoint exists, just not wired)
+- Artifact picker missing from "Start a New Session" quick-start form
+
+## Phase 6 — Bootstrap UI redesign (next major track)
+
+**Decision settled** — see `SKILL.md` Phase 6 section for full spec.
+Summary: Bootstrap 5.3 via CDN, `data-bs-theme="dark"`, small `custom.css`
+for palette overrides, fully idiomatic adoption throughout (no inline style
+debt, no hybrid). Backend unchanged. Do not start until the functionality
+audit is complete.
+
+**Prerequisite before starting:** audit every page (features, inter-page
+state globals, inline styles in JS files, API route smoke-test).
 
 ---
 
