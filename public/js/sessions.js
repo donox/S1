@@ -1,25 +1,19 @@
 window.sessionsInit = async function () {
   const activeWrap  = document.getElementById('active-session-wrap');
-  const banner      = document.getElementById('sessions-banner');
   const tbody       = document.getElementById('sessions-body');
   const stats       = document.getElementById('session-stats');
   const detailWrap  = document.getElementById('session-detail-wrap');
   let elapsedTimer  = null;
-  let currentDetailSessionId = null;  // tracks which session the detail panel is showing
-  let cachedRunSettings  = [];        // all material_settings rows, for run form setting picker
-  let cachedRunMaterials = [];        // sorted unique material names, for run form datalist
-  let cachedArtifacts    = [];        // all artifacts, for run form artifact picker
+  let currentDetailSessionId = null;
+  let cachedRunSettings  = [];
+  let cachedRunMaterials = [];
+  let cachedArtifacts    = [];
 
   async function apiFetch(url, opts) {
     const r = await fetch(url, opts);
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || r.statusText);
     return data;
-  }
-
-  function showBanner(msg, type = 'error') {
-    banner.innerHTML = `<div class="banner banner-${type}">${msg}</div>`;
-    setTimeout(() => { banner.innerHTML = ''; }, 5000);
   }
 
   function elapsed(startedAt) {
@@ -38,28 +32,45 @@ window.sessionsInit = async function () {
     return isNaN(d) ? 'unknown' : d.toLocaleTimeString();
   }
 
-  const TYPE_COLOR = {
-    note: 'var(--text-muted)', discovery: '#27ae60',
-    issue: 'var(--accent)', question: 'var(--accent2)',
+  const TYPE_CLASS = {
+    note: 'text-muted', discovery: 'text-success',
+    issue: 'text-primary', question: 'text-warning',
   };
-  const OUTCOME_COLOR = { success: 'var(--success)', partial: 'var(--accent2)', failed: 'var(--accent)' };
-  const OBS_OUTCOME_COLOR = {
-    positive: 'var(--success)', negative: 'var(--danger)',
-    neutral: 'var(--text-muted)', unexpected: 'var(--accent2)',
+  const OUTCOME_CLASS = {
+    success: 'text-success', partial: 'text-warning', failed: 'text-danger',
+  };
+  const OBS_OUTCOME_CLASS = {
+    positive: 'text-success', negative: 'text-danger',
+    neutral: 'text-muted', unexpected: 'text-warning',
+  };
+  const STATUS_BS = {
+    in_progress: 'text-bg-danger', completed: 'text-bg-success',
+    aborted: 'text-bg-secondary', planned: 'text-bg-warning',
+  };
+  const STATUS_LABEL = {
+    in_progress: '● Active', completed: 'Done', aborted: 'Aborted', planned: 'Planned',
   };
 
   function outcomeBadge(outcome) {
     if (!outcome) return '';
-    const c = OBS_OUTCOME_COLOR[outcome] || 'var(--text-muted)';
-    return `<span style="color:${c};font-size:0.7rem;text-transform:uppercase;font-weight:600;margin-left:6px">${outcome}</span>`;
+    const cls = OBS_OUTCOME_CLASS[outcome] ?? 'text-muted';
+    return `<span class="${cls} small text-uppercase fw-semibold ms-2">${outcome}</span>`;
   }
 
-  // Returns a short "setting: material/op" label for observations linked to a saved setting.
   function fmtLinkedSetting(settingId) {
     if (!settingId) return '';
     const s = cachedRunSettings.find(r => r.id === settingId);
     if (!s) return '';
-    return `<span style="font-size:0.75rem;color:var(--text-muted);margin-left:6px">[${s.material} / ${s.operation}]</span>`;
+    return `<span class="text-muted small ms-2">[${s.material} / ${s.operation}]</span>`;
+  }
+
+  function fmtParam(runOverride, base, delta, unit) {
+    if (runOverride != null) return `<strong>${runOverride}${unit}</strong>`;
+    if (base == null) return null;
+    if (!delta) return `${base}${unit}`;
+    const effective = base + delta;
+    const sign = delta > 0 ? '+' : '';
+    return `${base}${unit}<span class="text-warning" style="font-size:0.75em"> ${sign}${delta}→</span><strong>${effective}${unit}</strong>`;
   }
 
   // ── Populate dropdowns ────────────────────────────────────────────
@@ -109,49 +120,50 @@ window.sessionsInit = async function () {
     const obs = await apiFetch(`/api/observations?session_id=${session.id}&dismissed=false`);
 
     activeWrap.innerHTML = `
-      <div class="card active-session-card" style="margin-bottom:20px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
-          <div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-              <span style="color:var(--accent);font-size:1.1rem">●</span>
-              <strong>Session in progress</strong>
+      <div class="card active-session-card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="text-success fs-5">●</span>
+                <strong>Session in progress</strong>
+              </div>
+              ${session.project_name_resolved ? `<div class="text-muted small">Project: ${session.project_name_resolved}</div>` : ''}
+              ${session.user_name ? `<div class="text-muted small">User: ${session.user_name}</div>` : ''}
+              <div class="text-muted small">
+                Started: ${fmtTime(session.started_at)} &nbsp;·&nbsp;
+                Elapsed: <span id="elapsed-display">${elapsed(session.started_at)}</span>
+              </div>
             </div>
-            ${session.project_name_resolved ? `<div style="font-size:0.85rem;color:var(--text-muted)">Project: ${session.project_name_resolved}</div>` : ''}
-            ${session.user_name ? `<div style="font-size:0.85rem;color:var(--text-muted)">User: ${session.user_name}</div>` : ''}
-            <div style="font-size:0.85rem;color:var(--text-muted)">
-              Started: ${fmtTime(session.started_at)} &nbsp;·&nbsp;
-              Elapsed: <span id="elapsed-display">${elapsed(session.started_at)}</span>
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-primary btn-sm" id="btn-complete-session" data-id="${session.id}">Complete</button>
+              <button class="btn btn-danger btn-sm" id="btn-abort-session" data-id="${session.id}">Abort</button>
             </div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" id="btn-complete-session" data-id="${session.id}">Complete</button>
-            <button class="btn btn-danger btn-sm" id="btn-abort-session" data-id="${session.id}">Abort</button>
-          </div>
-        </div>
 
-        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-          <div style="display:flex;gap:8px;margin-bottom:8px;align-items:stretch;flex-wrap:wrap">
-            <select id="obs-type" style="min-width:100px;flex-shrink:0">
-              <option value="note">Note</option>
-              <option value="discovery">Discovery</option>
-              <option value="issue">Issue</option>
-              <option value="question">Question</option>
-            </select>
-            <select id="obs-outcome" style="min-width:110px;flex-shrink:0">
-              <option value="">outcome…</option>
-              <option value="positive">positive</option>
-              <option value="negative">negative</option>
-              <option value="neutral">neutral</option>
-              <option value="unexpected">unexpected</option>
-            </select>
-            <input id="obs-input" type="text"
-              placeholder="Note anything worth remembering…"
-              style="flex:1;min-width:200px">
-            <button class="btn btn-primary btn-sm" id="btn-add-obs" style="flex-shrink:0">Add →</button>
-          </div>
-          <div id="obs-feedback" style="font-size:0.8rem;min-height:1.2em;margin-bottom:6px"></div>
-          <div id="obs-list" style="font-size:0.85rem">
-            ${renderObsList(obs, session.id)}
+          <div class="mt-3 pt-3 border-top">
+            <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
+              <select class="form-select form-select-sm flex-shrink-0" id="obs-type" style="width:auto">
+                <option value="note">Note</option>
+                <option value="discovery">Discovery</option>
+                <option value="issue">Issue</option>
+                <option value="question">Question</option>
+              </select>
+              <select class="form-select form-select-sm flex-shrink-0" id="obs-outcome" style="width:auto">
+                <option value="">outcome…</option>
+                <option value="positive">positive</option>
+                <option value="negative">negative</option>
+                <option value="neutral">neutral</option>
+                <option value="unexpected">unexpected</option>
+              </select>
+              <input class="form-control form-control-sm flex-grow-1" id="obs-input" type="text"
+                placeholder="Note anything worth remembering…" style="min-width:200px">
+              <button class="btn btn-primary btn-sm flex-shrink-0" id="btn-add-obs">Add →</button>
+            </div>
+            <div id="obs-feedback" class="small min-h-feedback mb-1"></div>
+            <div id="obs-list" class="small">
+              ${renderObsList(obs, session.id)}
+            </div>
           </div>
         </div>
       </div>`;
@@ -166,9 +178,13 @@ window.sessionsInit = async function () {
       note: 'Note anything worth remembering…', discovery: 'What did you discover or learn?',
       issue: 'Describe the problem you encountered…', question: 'What do you need to find out?',
     };
-    function setObsFeedback(msg, color = 'var(--text-muted)') {
+    function setObsFeedback(msg, type = '') {
       const el = document.getElementById('obs-feedback');
-      if (el) { el.textContent = msg; el.style.color = color; }
+      if (!el) return;
+      el.textContent = msg;
+      el.className = `small min-h-feedback mb-1 ${
+        type === 'success' ? 'text-success' : type === 'error' ? 'text-danger' : 'text-muted'
+      }`;
     }
     document.getElementById('obs-type').addEventListener('change', () => {
       const input = document.getElementById('obs-input');
@@ -182,10 +198,10 @@ window.sessionsInit = async function () {
       const type    = document.getElementById('obs-type').value;
       const outcome = document.getElementById('obs-outcome').value || null;
       if (!content) {
-        input.style.borderColor = 'var(--accent)';
-        setObsFeedback('Enter something before clicking Add.', 'var(--accent)');
+        input.classList.add('is-invalid');
+        setObsFeedback('Enter something before clicking Add.', 'error');
         input.focus();
-        setTimeout(() => { input.style.borderColor = ''; setObsFeedback(''); }, 2500);
+        setTimeout(() => { input.classList.remove('is-invalid'); setObsFeedback(''); }, 2500);
         return;
       }
       const btn = document.getElementById('btn-add-obs');
@@ -196,12 +212,12 @@ window.sessionsInit = async function () {
           body: JSON.stringify({ session_id: session.id, content, type, outcome }),
         });
         input.value = '';
-        setObsFeedback('✓ Added', 'var(--success)');
+        setObsFeedback('✓ Added', 'success');
         setTimeout(() => setObsFeedback(''), 2000);
         const updated = await apiFetch(`/api/observations?session_id=${session.id}&dismissed=false`);
         document.getElementById('obs-list').innerHTML = renderObsList(updated, session.id);
       } catch (e) {
-        setObsFeedback('Error: ' + e.message, 'var(--accent)');
+        setObsFeedback('Error: ' + e.message, 'error');
       } finally {
         btn.disabled = false; btn.textContent = 'Add →';
       }
@@ -217,7 +233,7 @@ window.sessionsInit = async function () {
         await apiFetch(`/api/usage/${session.id}/abort`, { method: 'PUT' });
         clearInterval(elapsedTimer);
         await refresh();
-      } catch (e) { showBanner(e.message); }
+      } catch (e) { window.showToast(e.message); }
     };
     document.getElementById('obs-list').addEventListener('click', async e => {
       if (!e.target.classList.contains('dismiss-obs')) return;
@@ -226,40 +242,44 @@ window.sessionsInit = async function () {
         await apiFetch(`/api/observations/${id}/dismiss`, { method: 'PUT' });
         const updated = await apiFetch(`/api/observations?session_id=${session.id}&dismissed=false`);
         document.getElementById('obs-list').innerHTML = renderObsList(updated, session.id);
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
     });
   }
 
   function renderObsList(obs, sessionId) {
-    if (!obs.length) return '<p style="color:var(--text-muted)">No observations yet.</p>';
+    if (!obs.length) return '<p class="text-muted mb-0">No observations yet.</p>';
     return obs.map(o => `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);gap:8px">
+      <div class="d-flex justify-content-between align-items-start py-2 border-bottom gap-2">
         <div>
-          <span style="color:${TYPE_COLOR[o.type]};font-size:0.75rem;text-transform:uppercase;font-weight:600">${o.type}</span>
+          <span class="${TYPE_CLASS[o.type] ?? 'text-muted'} small text-uppercase fw-semibold">${o.type}</span>
           ${outcomeBadge(o.outcome)}
-          <span style="margin-left:8px">${o.content}</span>
+          <span class="ms-2">${o.content}</span>
         </div>
-        <button class="btn btn-secondary btn-sm dismiss-obs" data-id="${o.id}" style="flex-shrink:0">Dismiss</button>
+        <button class="btn btn-secondary btn-sm flex-shrink-0 dismiss-obs" data-id="${o.id}">Dismiss</button>
       </div>`).join('');
   }
 
   function showCompleteForm(session) {
     activeWrap.querySelector('.card').insertAdjacentHTML('beforeend', `
-      <div id="complete-form" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-        <h3>Complete Session</h3>
-        <div class="form-row" style="margin-top:10px">
-          <div><label>Outcome</label>
-            <select id="comp-outcome">
+      <div id="complete-form" class="mt-3 pt-3 border-top">
+        <h3 class="h6 mb-3">Complete Session</h3>
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col-auto">
+            <label class="form-label small">Outcome</label>
+            <select class="form-select form-select-sm" id="comp-outcome">
               <option value="success">Success</option>
               <option value="partial">Partial</option>
               <option value="failed">Failed</option>
-            </select></div>
-          <div style="flex:1"><label>Final notes</label>
-            <input id="comp-notes" type="text" placeholder="Optional summary"></div>
+            </select>
+          </div>
+          <div class="col">
+            <label class="form-label small">Final notes</label>
+            <input class="form-control form-control-sm" id="comp-notes" type="text" placeholder="Optional summary">
+          </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-primary" id="confirm-complete">Confirm Complete</button>
-          <button class="btn btn-secondary" id="cancel-complete">Cancel</button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary btn-sm" id="confirm-complete">Confirm Complete</button>
+          <button class="btn btn-secondary btn-sm" id="cancel-complete">Cancel</button>
         </div>
       </div>`);
     document.getElementById('cancel-complete').onclick = () =>
@@ -275,24 +295,22 @@ window.sessionsInit = async function () {
         clearInterval(elapsedTimer);
         await refresh();
         await showSessionDetail(session.id);
-      } catch (e) { showBanner(e.message); }
+      } catch (e) { window.showToast(e.message); }
     };
   }
 
   // ── Runs section ──────────────────────────────────────────────────
 
-  // fmtParam: show run override, or base+delta→effective, or plain base
   function fmtParam(runOverride, base, delta, unit) {
     if (runOverride != null) return `<strong>${runOverride}${unit}</strong>`;
     if (base == null) return null;
     if (!delta) return `${base}${unit}`;
     const effective = base + delta;
     const sign = delta > 0 ? '+' : '';
-    return `${base}${unit}<span style="color:var(--accent2);font-size:0.75em"> ${sign}${delta}→</span><strong>${effective}${unit}</strong>`;
+    return `${base}${unit}<span class="text-warning" style="font-size:0.75em"> ${sign}${delta}→</span><strong>${effective}${unit}</strong>`;
   }
 
   function renderRunSettingRow(s, runId, artifact) {
-    // effective_operation is pre-computed by the API (COALESCE(rs.operation, ms.operation))
     const op     = s.effective_operation;
     const params = [];
     const pwr = fmtParam(s.power, s.setting_power, artifact?.power_delta, '%');
@@ -301,35 +319,34 @@ window.sessionsInit = async function () {
     const passes = s.passes ?? s.setting_passes;
     const foc = fmtParam(s.focus_offset_mm, s.setting_focus, artifact?.focus_delta, 'mm');
     const passDelta = artifact?.passes_delta;
-    const passBase = passes;
+    const passBase  = passes;
     let passStr = null;
     if (passBase != null) {
       if (passDelta) {
-        const eff = passBase + passDelta;
+        const eff  = passBase + passDelta;
         const sign = passDelta > 0 ? '+' : '';
-        passStr = `×${passBase}<span style="color:var(--accent2);font-size:0.75em"> ${sign}${passDelta}→</span><strong>×${eff}</strong>`;
+        passStr = `×${passBase}<span class="text-warning" style="font-size:0.75em"> ${sign}${passDelta}→</span><strong>×${eff}</strong>`;
       } else if (passBase > 1) {
         passStr = `×${passBase}`;
       }
     }
-    if (pwr  != null) params.push(pwr);
-    if (spd  != null) params.push(spd);
+    if (pwr    != null) params.push(pwr);
+    if (spd    != null) params.push(spd);
     if (lpiVal != null) params.push(`${lpiVal} LPI`);
     if (passStr != null) params.push(passStr);
-    if (foc  != null && (s.focus_offset_mm ?? s.setting_focus) !== 0) params.push(`focus ${foc}`);
+    if (foc    != null && (s.focus_offset_mm ?? s.setting_focus) !== 0) params.push(`focus ${foc}`);
     return `
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;
-                  font-size:0.82rem;margin-bottom:3px;padding:2px 0">
-        <span style="color:var(--text-muted)">↳</span>
-        ${op ? `<span class="badge" style="font-size:0.72rem">${op}</span>` : '<span style="color:var(--text-muted);font-size:0.72rem">—</span>'}
-        ${params.length ? `<span style="color:var(--text-muted)">${params.join(' · ')}</span>` : ''}
-        ${s.purpose ? `<span style="font-style:italic;color:var(--text)">${s.purpose}</span>` : ''}
-        <button class="btn btn-secondary btn-sm run-setting-edit"
-                data-run-id="${runId}" data-sid="${s.id}"
-                style="font-size:0.7rem;padding:1px 5px;margin-left:auto">Edit</button>
-        <button class="btn btn-danger btn-sm run-setting-del"
-                data-run-id="${runId}" data-sid="${s.id}"
-                style="font-size:0.7rem;padding:1px 5px">×</button>
+      <div class="d-flex align-items-center gap-2 flex-wrap small mb-1 py-1">
+        <span class="text-muted">↳</span>
+        ${op ? `<span class="badge bg-secondary">${op}</span>` : '<span class="text-muted">—</span>'}
+        ${params.length ? `<span class="text-muted">${params.join(' · ')}</span>` : ''}
+        ${s.purpose ? `<em>${s.purpose}</em>` : ''}
+        <div class="d-flex gap-1 ms-auto">
+          <button class="btn btn-secondary btn-xs run-setting-edit"
+            data-run-id="${runId}" data-sid="${s.id}">Edit</button>
+          <button class="btn btn-danger btn-xs run-setting-del"
+            data-run-id="${runId}" data-sid="${s.id}">×</button>
+        </div>
       </div>`;
   }
 
@@ -346,67 +363,62 @@ window.sessionsInit = async function () {
     ).join('');
     const selOp = v => v === e.operation ? 'selected' : '';
     return `
-      <div style="background:var(--surface2);padding:8px 10px;border-radius:4px;
-                  margin:4px 0 6px;font-size:0.85rem">
-        <div style="font-size:0.8rem;font-weight:600;margin-bottom:6px;color:var(--text-muted)">
-          ${isEdit ? 'Edit setting' : 'Add setting'}
-        </div>
-        <div class="form-row" style="margin-bottom:6px">
-          <div style="flex:1">
-            <label style="font-size:0.78rem">Setting</label>
-            <select class="rss-setting" data-run-id="${runId}">
+      <div class="card card-body p-2 my-2 small">
+        <div class="fw-semibold text-muted mb-2">${isEdit ? 'Edit setting' : 'Add setting'}</div>
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col">
+            <label class="form-label small mb-1">Setting</label>
+            <select class="form-select form-select-sm rss-setting" data-run-id="${runId}">
               <option value="">— Custom params —</option>
               ${settingOpts}
             </select>
           </div>
-          <div>
-            <label style="font-size:0.78rem">Operation</label>
-            <select class="rss-operation" data-run-id="${runId}" style="font-size:0.85rem">
+          <div class="col-auto">
+            <label class="form-label small mb-1">Operation</label>
+            <select class="form-select form-select-sm rss-operation" data-run-id="${runId}">
               <option value="">—</option>
               <option value="engrave" ${selOp('engrave')}>Engrave</option>
               <option value="score"   ${selOp('score')}>Score</option>
               <option value="cut"     ${selOp('cut')}>Cut</option>
             </select>
           </div>
-          <div style="flex:1">
-            <label style="font-size:0.78rem">Purpose <small style="color:var(--text-muted)">(optional)</small></label>
-            <input class="rss-purpose" data-run-id="${runId}" type="text"
-                   value="${e.purpose ?? ''}"
-                   placeholder="e.g. fill, score outline" style="font-size:0.85rem">
+          <div class="col">
+            <label class="form-label small mb-1">Purpose <span class="text-muted fw-normal">(optional)</span></label>
+            <input class="form-control form-control-sm rss-purpose" data-run-id="${runId}" type="text"
+              value="${e.purpose ?? ''}" placeholder="e.g. fill, score outline">
           </div>
         </div>
-        <div class="form-row" style="margin-bottom:8px">
-          <div>
-            <label style="font-size:0.78rem">Power %</label>
-            <input class="rss-power" data-run-id="${runId}" type="number" min="0" max="100"
-                   value="${e.power ?? ''}" style="width:70px;font-size:0.85rem" placeholder="—">
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col-auto">
+            <label class="form-label small mb-1">Power %</label>
+            <input class="form-control form-control-sm rss-power" data-run-id="${runId}"
+              type="number" min="0" max="100" value="${e.power ?? ''}" style="width:70px" placeholder="—">
           </div>
-          <div>
-            <label style="font-size:0.78rem">Speed mm/sec</label>
-            <input class="rss-speed" data-run-id="${runId}" type="number" min="1"
-                   value="${e.speed ?? ''}" style="width:80px;font-size:0.85rem" placeholder="—">
+          <div class="col-auto">
+            <label class="form-label small mb-1">Speed mm/s</label>
+            <input class="form-control form-control-sm rss-speed" data-run-id="${runId}"
+              type="number" min="1" value="${e.speed ?? ''}" style="width:80px" placeholder="—">
           </div>
-          <div>
-            <label style="font-size:0.78rem">LPI</label>
-            <input class="rss-lpi" data-run-id="${runId}" type="number" min="1"
-                   value="${e.lines_per_inch ?? ''}" style="width:65px;font-size:0.85rem" placeholder="—">
+          <div class="col-auto">
+            <label class="form-label small mb-1">LPI</label>
+            <input class="form-control form-control-sm rss-lpi" data-run-id="${runId}"
+              type="number" min="1" value="${e.lines_per_inch ?? ''}" style="width:65px" placeholder="—">
           </div>
-          <div>
-            <label style="font-size:0.78rem">Passes</label>
-            <input class="rss-passes" data-run-id="${runId}" type="number" min="1"
-                   value="${e.passes ?? ''}" style="width:60px;font-size:0.85rem" placeholder="—">
+          <div class="col-auto">
+            <label class="form-label small mb-1">Passes</label>
+            <input class="form-control form-control-sm rss-passes" data-run-id="${runId}"
+              type="number" min="1" value="${e.passes ?? ''}" style="width:60px" placeholder="—">
           </div>
-          <div>
-            <label style="font-size:0.78rem">Focus mm</label>
-            <input class="rss-focus" data-run-id="${runId}" type="number" step="0.1"
-                   value="${e.focus_offset_mm ?? ''}" style="width:70px;font-size:0.85rem" placeholder="—">
+          <div class="col-auto">
+            <label class="form-label small mb-1">Focus mm</label>
+            <input class="form-control form-control-sm rss-focus" data-run-id="${runId}"
+              type="number" step="0.1" value="${e.focus_offset_mm ?? ''}" style="width:70px" placeholder="—">
           </div>
         </div>
-        <div style="display:flex;gap:6px">
+        <div class="d-flex gap-2">
           <button class="btn btn-primary btn-sm rss-save"
-                  data-run-id="${runId}"
-                  data-mode="${isEdit ? 'edit' : 'add'}"
-                  data-sid="${e.id ?? ''}">${isEdit ? 'Save' : 'Add'}</button>
+            data-run-id="${runId}" data-mode="${isEdit ? 'edit' : 'add'}"
+            data-sid="${e.id ?? ''}">${isEdit ? 'Save' : 'Add'}</button>
           <button class="btn btn-secondary btn-sm rss-cancel" data-run-id="${runId}">Cancel</button>
         </div>
       </div>`;
@@ -415,48 +427,35 @@ window.sessionsInit = async function () {
   function renderRunRow(run) {
     const hasSettings = run.settings && run.settings.length > 0;
     return `
-      <div id="run-row-${run.id}"
-           style="background:var(--surface2);border:1px solid var(--border);
-                  border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:6px">
-
-        <!-- Card header: run number + material + outcome + action buttons -->
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="color:var(--text-muted);font-size:0.75rem;font-weight:700;
-                       background:var(--surface);border:1px solid var(--border);
-                       border-radius:3px;padding:1px 5px">#${run.run_number}</span>
-          ${run.material ? `<strong style="font-size:0.9rem">${run.material}</strong>` : '<em style="color:var(--text-muted);font-size:0.85rem">no material</em>'}
-          ${run.artifact_name ? `<span style="font-size:0.78rem;color:var(--accent2);background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px">${run.artifact_name}</span>` : ''}
-          ${run.outcome  ? `<span style="color:${OUTCOME_COLOR[run.outcome]??'inherit'};font-size:0.82rem">${run.outcome}</span>` : ''}
-          <div style="display:flex;gap:4px;margin-left:auto;flex-shrink:0">
-            <button class="btn btn-secondary btn-sm run-toggle-obs" data-run-id="${run.id}">Obs ▾</button>
-            <button class="btn btn-secondary btn-sm run-edit-btn"   data-run-id="${run.id}">Edit</button>
-            <button class="btn btn-danger    btn-sm run-del-btn"    data-run-id="${run.id}">Del</button>
+      <div id="run-row-${run.id}" class="card mb-2">
+        <div class="card-body p-2">
+          <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+            <span class="badge bg-secondary">#${run.run_number}</span>
+            ${run.material ? `<strong class="small">${run.material}</strong>` : '<em class="text-muted small">no material</em>'}
+            ${run.artifact_name ? `<span class="badge text-bg-warning">${run.artifact_name}</span>` : ''}
+            ${run.outcome ? `<span class="${OUTCOME_CLASS[run.outcome] ?? ''} small">${run.outcome}</span>` : ''}
+            <div class="d-flex gap-1 ms-auto flex-shrink-0">
+              <button class="btn btn-secondary btn-xs run-toggle-obs" data-run-id="${run.id}">Obs ▾</button>
+              <button class="btn btn-secondary btn-xs run-edit-btn"   data-run-id="${run.id}">Edit</button>
+              <button class="btn btn-danger    btn-xs run-del-btn"    data-run-id="${run.id}">Del</button>
+            </div>
           </div>
-        </div>
 
-        <!-- Per-setting parameter rows -->
-        <div id="run-settings-${run.id}" style="padding-left:4px">
-          ${hasSettings
-            ? run.settings.map(s => renderRunSettingRow(s, run.id, run)).join('')
-            : '<span style="color:var(--text-muted);font-size:0.8rem">No settings yet.</span>'}
-        </div>
+          <div id="run-settings-${run.id}" class="ps-2">
+            ${hasSettings
+              ? run.settings.map(s => renderRunSettingRow(s, run.id, run)).join('')
+              : '<span class="text-muted small">No settings yet.</span>'}
+          </div>
 
-        <!-- Add/edit setting form slot -->
-        <div id="run-setting-form-${run.id}"></div>
+          <div id="run-setting-form-${run.id}"></div>
 
-        <!-- Footer: file, notes, + Setting button -->
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:0.8rem;
-                    padding-top:4px;border-top:1px solid var(--border)">
-          ${run.file_used ? `<span style="color:var(--text-muted)">${run.file_used}</span>` : ''}
-          ${run.notes     ? `<em style="color:var(--text-muted)">${run.notes}</em>` : ''}
-          <button class="btn btn-secondary btn-sm run-add-setting"
-                  data-run-id="${run.id}"
-                  style="font-size:0.75rem;padding:2px 7px;margin-left:auto">+ Setting</button>
-        </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap small pt-2 mt-1 border-top">
+            ${run.file_used ? `<span class="text-muted">${run.file_used}</span>` : ''}
+            ${run.notes     ? `<em class="text-muted">${run.notes}</em>` : ''}
+            <button class="btn btn-secondary btn-xs run-add-setting ms-auto" data-run-id="${run.id}">+ Setting</button>
+          </div>
 
-        <!-- Observations panel (hidden until toggled) -->
-        <div id="run-obs-${run.id}"
-             style="display:none;padding-top:8px;border-top:1px solid var(--border)">
+          <div id="run-obs-${run.id}" class="d-none pt-2 border-top mt-1"></div>
         </div>
       </div>`;
   }
@@ -467,69 +466,69 @@ window.sessionsInit = async function () {
       <div id="run-obs-list-${runId}">
         ${undismissed.length
           ? undismissed.map(o => `
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;
-                          padding:5px 0;border-bottom:1px solid var(--border);gap:8px;font-size:0.85rem">
+              <div class="d-flex justify-content-between align-items-start py-1 border-bottom gap-2 small">
                 <div>
-                  <span style="color:${TYPE_COLOR[o.type]};font-size:0.72rem;text-transform:uppercase;font-weight:600">${o.type}</span>
+                  <span class="${TYPE_CLASS[o.type] ?? 'text-muted'} small text-uppercase fw-semibold">${o.type}</span>
                   ${outcomeBadge(o.outcome)}
-                  <span style="margin-left:6px">${o.content}</span>
+                  <span class="ms-2">${o.content}</span>
                 </div>
-                <button class="btn btn-secondary btn-sm run-obs-dismiss" data-id="${o.id}" data-run-id="${runId}" style="flex-shrink:0">Dismiss</button>
+                <button class="btn btn-secondary btn-xs run-obs-dismiss flex-shrink-0"
+                  data-id="${o.id}" data-run-id="${runId}">Dismiss</button>
               </div>`).join('')
-          : '<p style="color:var(--text-muted);font-size:0.8rem;margin:4px 0">No observations for this run.</p>'}
+          : '<p class="text-muted small mb-1">No observations for this run.</p>'}
       </div>
-      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
-        <select class="run-obs-type" data-run-id="${runId}" style="font-size:0.85rem;flex-shrink:0">
+      <div class="d-flex gap-2 mt-2 flex-wrap align-items-center">
+        <select class="form-select form-select-sm run-obs-type flex-shrink-0" data-run-id="${runId}" style="width:auto">
           <option value="note">Note</option>
           <option value="discovery">Discovery</option>
           <option value="issue">Issue</option>
           <option value="question">Question</option>
         </select>
-        <select class="run-obs-outcome" data-run-id="${runId}" style="font-size:0.85rem;flex-shrink:0">
+        <select class="form-select form-select-sm run-obs-outcome flex-shrink-0" data-run-id="${runId}" style="width:auto">
           <option value="">outcome…</option>
           <option value="positive">positive</option>
           <option value="negative">negative</option>
           <option value="neutral">neutral</option>
           <option value="unexpected">unexpected</option>
         </select>
-        <input class="run-obs-input" data-run-id="${runId}" type="text"
-               style="flex:1;min-width:150px;font-size:0.85rem"
-               placeholder="Observation for this run…">
+        <input class="form-control form-control-sm flex-grow-1 run-obs-input" data-run-id="${runId}"
+          type="text" style="min-width:150px" placeholder="Observation for this run…">
         <button class="btn btn-primary btn-sm run-obs-add" data-run-id="${runId}">Add</button>
       </div>`;
   }
 
   function buildRunForm(sessionId, run = null) {
-    const isEdit = !!run;
+    const isEdit    = !!run;
     const artifactOpts = cachedArtifacts.map(a =>
       `<option value="${a.id}" ${a.id === run?.artifact_id ? 'selected' : ''}>${a.name}</option>`
     ).join('');
     return `
-      <div style="margin-top:10px;padding:12px;background:var(--surface2);border-radius:var(--radius)">
-        <strong style="font-size:0.9rem">${isEdit ? `Edit Run #${run.run_number}` : 'Add Run'}</strong>
-        <div class="form-row" style="margin-top:8px">
-          <div>
-            <label>Material <abbr title="Never PVC, vinyl, or chlorine-containing materials">⚠</abbr></label>
-            <input id="rf-material" type="text" list="rf-mat-list"
-                   value="${run?.material ?? ''}" placeholder="e.g. Glass">
+      <div class="card card-body mt-2">
+        <strong class="small">${isEdit ? `Edit Run #${run.run_number}` : 'Add Run'}</strong>
+        <div class="row g-2 align-items-end mt-1 mb-2">
+          <div class="col-md-3">
+            <label class="form-label small">Material <abbr title="Never PVC, vinyl, or chlorine-containing materials">⚠</abbr></label>
+            <input class="form-control form-control-sm" id="rf-material" type="text" list="rf-mat-list"
+              value="${run?.material ?? ''}" placeholder="e.g. Glass">
             <datalist id="rf-mat-list">
               ${cachedRunMaterials.map(m => `<option value="${m}">`).join('')}
             </datalist>
           </div>
-          <div>
-            <label>Artifact <small style="color:var(--text-muted)">(optional)</small></label>
-            <select id="rf-artifact">
+          <div class="col-md-3">
+            <label class="form-label small">Artifact <span class="text-muted fw-normal">(optional)</span></label>
+            <select class="form-select form-select-sm" id="rf-artifact">
               <option value="">— None —</option>
               ${artifactOpts}
             </select>
           </div>
-          <div style="flex:1">
-            <label>File used</label>
-            <input id="rf-file" type="text" value="${run?.file_used ?? ''}" placeholder="filename.svg">
+          <div class="col-md">
+            <label class="form-label small">File used</label>
+            <input class="form-control form-control-sm" id="rf-file" type="text"
+              value="${run?.file_used ?? ''}" placeholder="filename.svg">
           </div>
-          <div>
-            <label>Outcome</label>
-            <select id="rf-outcome">
+          <div class="col-md-2">
+            <label class="form-label small">Outcome</label>
+            <select class="form-select form-select-sm" id="rf-outcome">
               <option value="">—</option>
               <option value="success" ${run?.outcome==='success'?'selected':''}>Success</option>
               <option value="partial" ${run?.outcome==='partial'?'selected':''}>Partial</option>
@@ -537,16 +536,16 @@ window.sessionsInit = async function () {
             </select>
           </div>
         </div>
-        <div class="form-row" style="margin-top:6px">
-          <div style="flex:1">
-            <label>Notes</label>
-            <input id="rf-notes" type="text" value="${run?.notes ?? ''}">
+        <div class="row g-2 mb-2">
+          <div class="col">
+            <label class="form-label small">Notes</label>
+            <input class="form-control form-control-sm" id="rf-notes" type="text" value="${run?.notes ?? ''}">
           </div>
         </div>
-        <p style="font-size:0.78rem;color:var(--text-muted);margin:8px 0 0">
+        <p class="text-muted small mb-2">
           Settings (operation, power, speed, passes, focus) are added per-setting below the run row.
         </p>
-        <div style="display:flex;gap:8px;margin-top:10px">
+        <div class="d-flex gap-2">
           <button class="btn btn-primary btn-sm" id="rf-save">${isEdit ? 'Save' : 'Add Run'}</button>
           <button class="btn btn-secondary btn-sm" id="rf-cancel">Cancel</button>
         </div>
@@ -556,7 +555,7 @@ window.sessionsInit = async function () {
   // ── Session detail panel ──────────────────────────────────────────
   async function showSessionDetail(sessionId) {
     currentDetailSessionId = sessionId;
-    detailWrap.innerHTML = '<p class="loading" style="margin-top:16px">Loading…</p>';
+    detailWrap.innerHTML = '<p class="text-muted mt-3">Loading…</p>';
     document.querySelectorAll('#sessions-body tr').forEach(r => r.classList.remove('row-selected'));
     document.querySelector(`#sessions-body tr[data-id="${sessionId}"]`)?.classList.add('row-selected');
     detailWrap.scrollIntoView({ behavior: 'smooth' });
@@ -574,109 +573,107 @@ window.sessionsInit = async function () {
       const dismissed   = obs.filter(o =>  o.dismissed_at && !o.run_id);
 
       detailWrap.innerHTML = `
-        <div class="card session-detail-card" style="margin-top:16px">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px">
-            <div>
-              <h2 style="margin:0 0 2px">Session — ${session.job_date}</h2>
-              ${session.project_name_resolved
-                ? `<div style="font-size:0.875rem;color:var(--text-muted)">
-                     Project: <strong style="color:var(--text)">${session.project_name_resolved}</strong>
-                   </div>`
-                : `<div style="font-size:0.875rem;color:var(--text-muted)">Standalone session</div>`}
+        <div class="card session-detail-card mt-3">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+              <div>
+                <h2 class="h5 mb-1">Session — ${session.job_date}</h2>
+                ${session.project_name_resolved
+                  ? `<div class="text-muted small">Project: <strong>${session.project_name_resolved}</strong></div>`
+                  : `<div class="text-muted small">Standalone session</div>`}
+              </div>
+              <button class="btn btn-secondary btn-sm flex-shrink-0" id="close-detail">✕ Close</button>
             </div>
-            <button class="btn btn-secondary btn-sm" id="close-detail" style="flex-shrink:0">✕ Close</button>
-          </div>
 
-          <div class="form-row" style="margin-bottom:10px">
-            <div>
-              <label>Date</label>
-              <input id="det-date" type="date" value="${session.job_date ?? ''}">
+            <div class="row g-2 align-items-end mb-2">
+              <div class="col-auto">
+                <label class="form-label small">Date</label>
+                <input class="form-control form-control-sm" id="det-date" type="date" value="${session.job_date ?? ''}">
+              </div>
+              <div class="col-auto">
+                <label class="form-label small">User</label>
+                <select class="form-select form-select-sm" id="det-user">
+                  <option value="">— None —</option>
+                  ${users.map(u => `<option value="${u.id}" ${u.id === session.user_id ? 'selected' : ''}>${u.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="col">
+                <label class="form-label small">Project</label>
+                <select class="form-select form-select-sm" id="det-project">
+                  <option value="">— Standalone —</option>
+                  ${projects.map(p => `<option value="${p.id}" ${p.id === session.project_id ? 'selected' : ''}>${p.name} (${p.status})</option>`).join('')}
+                </select>
+              </div>
             </div>
-            <div>
-              <label>User</label>
-              <select id="det-user">
-                <option value="">— None —</option>
-                ${users.map(u => `<option value="${u.id}" ${u.id === session.user_id ? 'selected' : ''}>${u.name}</option>`).join('')}
-              </select>
+            <div class="row g-2 align-items-end mb-3">
+              <div class="col-auto">
+                <label class="form-label small">Duration (min)</label>
+                <input class="form-control form-control-sm" id="det-duration" type="number" min="1"
+                  value="${session.duration_min ?? ''}" style="width:90px">
+              </div>
+              <div class="col">
+                <label class="form-label small">Session notes</label>
+                <input class="form-control form-control-sm" id="det-notes" type="text" value="${session.notes ?? ''}">
+              </div>
             </div>
-            <div style="flex:1">
-              <label>Project</label>
-              <select id="det-project">
-                <option value="">— Standalone —</option>
-                ${projects.map(p => `<option value="${p.id}" ${p.id === session.project_id ? 'selected' : ''}>${p.name} (${p.status})</option>`).join('')}
-              </select>
+            <div class="d-flex gap-2 mb-3">
+              <button class="btn btn-primary btn-sm" id="det-save">Save</button>
+              <button class="btn btn-danger btn-sm"  id="det-delete">Delete Session</button>
             </div>
-          </div>
-          <div class="form-row" style="margin-bottom:16px">
-            <div>
-              <label>Duration (min)</label>
-              <input id="det-duration" type="number" min="1" value="${session.duration_min ?? ''}" style="width:90px">
-            </div>
-            <div style="flex:2">
-              <label>Session notes</label>
-              <input id="det-notes" type="text" value="${session.notes ?? ''}">
-            </div>
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:20px;align-items:center">
-            <button class="btn btn-primary btn-sm" id="det-save">Save</button>
-            <button class="btn btn-danger btn-sm"  id="det-delete">Delete Session</button>
-          </div>
-          <div id="det-save-banner"></div>
 
-          <!-- Runs -->
-          <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:4px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <h3 style="margin:0">Runs (${runs.length})</h3>
-              <button class="btn btn-primary btn-sm" id="btn-add-run">+ Add Run</button>
+            <!-- Runs -->
+            <div class="border-top pt-3 mb-2">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h3 class="h6 mb-0">Runs (${runs.length})</h3>
+                <button class="btn btn-primary btn-sm" id="btn-add-run">+ Add Run</button>
+              </div>
+              <div id="det-runs-list" class="grid-wide mb-2">
+                ${runs.length
+                  ? runs.map(r => renderRunRow(r)).join('')
+                  : '<p class="text-muted small">No runs yet.</p>'}
+              </div>
+              <div id="det-run-form-wrap"></div>
             </div>
-            <div id="det-runs-list"
-                 style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:4px">
-              ${runs.length
-                ? runs.map(r => renderRunRow(r)).join('')
-                : '<p style="color:var(--text-muted);font-size:0.875rem">No runs yet.</p>'}
-            </div>
-            <div id="det-run-form-wrap"></div>
-          </div>
 
-          <!-- Session-level observations -->
-          <div style="border-top:1px solid var(--border);padding-top:14px">
-            <h3 style="margin-top:0">Session Observations (${undismissed.length} open${dismissed.length ? ', ' + dismissed.length + ' dismissed' : ''})</h3>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;
-                        padding:10px 12px;background:var(--surface2);border-radius:var(--radius)">
-              <select id="det-obs-type" style="flex-shrink:0;min-width:100px">
-                <option value="note">Note</option>
-                <option value="discovery">Discovery</option>
-                <option value="issue">Issue</option>
-                <option value="question">Question</option>
-              </select>
-              <select id="det-obs-outcome" style="flex-shrink:0;min-width:110px">
-                <option value="">outcome…</option>
-                <option value="positive">positive</option>
-                <option value="negative">negative</option>
-                <option value="neutral">neutral</option>
-                <option value="unexpected">unexpected</option>
-              </select>
-              <select id="det-obs-setting" style="flex-shrink:0;min-width:160px">
-                <option value="">— no setting —</option>
-                ${cachedRunSettings.map(s => `<option value="${s.id}">${s.material} / ${s.operation} (P:${s.power ?? '?'} S:${s.speed ?? '?'})</option>`).join('')}
-              </select>
-              <input id="det-obs-input" type="text" style="flex:1;min-width:180px"
-                placeholder="Add a session-level observation…">
-              <button class="btn btn-primary btn-sm" id="det-add-obs" style="flex-shrink:0">Add</button>
-              <span id="det-obs-feedback" style="font-size:0.8rem;width:100%;min-height:1em"></span>
+            <!-- Session-level observations -->
+            <div class="border-top pt-3">
+              <h3 class="h6 mb-3">Session Observations (${undismissed.length} open${dismissed.length ? ', ' + dismissed.length + ' dismissed' : ''})</h3>
+              <div class="card card-body mb-3 d-flex flex-row gap-2 align-items-center flex-wrap">
+                <select class="form-select form-select-sm flex-shrink-0" id="det-obs-type" style="width:auto">
+                  <option value="note">Note</option>
+                  <option value="discovery">Discovery</option>
+                  <option value="issue">Issue</option>
+                  <option value="question">Question</option>
+                </select>
+                <select class="form-select form-select-sm flex-shrink-0" id="det-obs-outcome" style="width:auto">
+                  <option value="">outcome…</option>
+                  <option value="positive">positive</option>
+                  <option value="negative">negative</option>
+                  <option value="neutral">neutral</option>
+                  <option value="unexpected">unexpected</option>
+                </select>
+                <select class="form-select form-select-sm flex-shrink-0" id="det-obs-setting" style="min-width:160px">
+                  <option value="">— no setting —</option>
+                  ${cachedRunSettings.map(s => `<option value="${s.id}">${s.material} / ${s.operation} (P:${s.power ?? '?'} S:${s.speed ?? '?'})</option>`).join('')}
+                </select>
+                <input class="form-control form-control-sm flex-grow-1" id="det-obs-input"
+                  style="min-width:180px" placeholder="Add a session-level observation…">
+                <button class="btn btn-primary btn-sm flex-shrink-0" id="det-add-obs">Add</button>
+                <span id="det-obs-feedback" class="small w-100 min-h-feedback"></span>
+              </div>
+              <div id="review-obs-list">
+                ${undismissed.length
+                  ? undismissed.map(o => renderObsRow(o, true)).join('')
+                  : '<p class="text-muted small">No open observations.</p>'}
+              </div>
+              ${dismissed.length ? `
+                <details class="mt-2">
+                  <summary class="text-muted small" style="cursor:pointer">Show ${dismissed.length} dismissed</summary>
+                  <div class="mt-2 opacity-75">
+                    ${dismissed.map(o => renderObsRow(o, false)).join('')}
+                  </div>
+                </details>` : ''}
             </div>
-            <div id="review-obs-list">
-              ${undismissed.length
-                ? undismissed.map(o => renderObsRow(o, true)).join('')
-                : '<p style="color:var(--text-muted);font-size:0.875rem">No open observations.</p>'}
-            </div>
-            ${dismissed.length ? `
-              <details style="margin-top:8px">
-                <summary style="cursor:pointer;font-size:0.8rem;color:var(--text-muted)">Show ${dismissed.length} dismissed</summary>
-                <div style="margin-top:8px;opacity:0.6">
-                  ${dismissed.map(o => renderObsRow(o, false)).join('')}
-                </div>
-              </details>` : ''}
           </div>
         </div>`;
 
@@ -689,26 +686,20 @@ window.sessionsInit = async function () {
 
       document.getElementById('det-save').onclick = async () => {
         const payload = {
-          job_date:    document.getElementById('det-date').value           || null,
-          user_id:    +document.getElementById('det-user').value           || null,
-          project_id: +document.getElementById('det-project').value        || null,
-          duration_min:+document.getElementById('det-duration').value      || null,
-          notes:       document.getElementById('det-notes').value.trim()   || null,
+          job_date:     document.getElementById('det-date').value           || null,
+          user_id:     +document.getElementById('det-user').value           || null,
+          project_id:  +document.getElementById('det-project').value        || null,
+          duration_min:+document.getElementById('det-duration').value       || null,
+          notes:        document.getElementById('det-notes').value.trim()   || null,
         };
         try {
           await apiFetch(`/api/usage/${sessionId}`, {
             method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload),
           });
-          document.getElementById('det-save-banner').innerHTML =
-            '<div class="banner banner-success">Saved.</div>';
-          setTimeout(() => {
-            const b = document.getElementById('det-save-banner');
-            if (b) b.innerHTML = '';
-          }, 3000);
+          window.showToast('Saved.', 'success');
           await loadSessions();
         } catch (e) {
-          document.getElementById('det-save-banner').innerHTML =
-            `<div class="banner banner-error">${e.message}</div>`;
+          window.showToast(e.message, 'error');
         }
       };
 
@@ -719,10 +710,9 @@ window.sessionsInit = async function () {
           detailWrap.innerHTML = '';
           currentDetailSessionId = null;
           await loadSessions();
-        } catch (e) { showBanner(e.message); }
+        } catch (e) { window.showToast(e.message); }
       };
 
-      // Add run button
       document.getElementById('btn-add-run').onclick = () => {
         document.getElementById('det-run-form-wrap').innerHTML = buildRunForm(sessionId);
         wireRunForm(sessionId, null);
@@ -737,9 +727,10 @@ window.sessionsInit = async function () {
         const setting_id = +document.getElementById('det-obs-setting').value || null;
         const fb         = document.getElementById('det-obs-feedback');
         if (!content) {
-          input.style.borderColor = 'var(--accent)';
-          fb.textContent = 'Enter something first.'; fb.style.color = 'var(--accent)';
-          setTimeout(() => { input.style.borderColor = ''; fb.textContent = ''; }, 2500);
+          input.classList.add('is-invalid');
+          fb.textContent = 'Enter something first.';
+          fb.className = 'small w-100 min-h-feedback text-danger';
+          setTimeout(() => { input.classList.remove('is-invalid'); fb.textContent = ''; }, 2500);
           return;
         }
         const btn = document.getElementById('det-add-obs');
@@ -750,15 +741,17 @@ window.sessionsInit = async function () {
             body: JSON.stringify({ session_id: sessionId, content, type, outcome, setting_id }),
           });
           input.value = '';
-          fb.textContent = '✓ Added'; fb.style.color = 'var(--success)';
+          fb.textContent = '✓ Added';
+          fb.className = 'small w-100 min-h-feedback text-success';
           setTimeout(() => { fb.textContent = ''; }, 2000);
-          const updated = await apiFetch(`/api/observations?session_id=${sessionId}`);
-          const fresh_u = updated.filter(o => !o.dismissed_at && !o.run_id);
+          const updated   = await apiFetch(`/api/observations?session_id=${sessionId}`);
+          const fresh_u   = updated.filter(o => !o.dismissed_at && !o.run_id);
           document.getElementById('review-obs-list').innerHTML = fresh_u.length
             ? fresh_u.map(o => renderObsRow(o, true)).join('')
-            : '<p style="color:var(--text-muted);font-size:0.875rem">No open observations.</p>';
+            : '<p class="text-muted small">No open observations.</p>';
         } catch (e) {
-          fb.textContent = 'Error: ' + e.message; fb.style.color = 'var(--accent)';
+          fb.textContent = 'Error: ' + e.message;
+          fb.className = 'small w-100 min-h-feedback text-danger';
         } finally { btn.disabled = false; }
       }
       document.getElementById('det-add-obs').onclick = submitDetObs;
@@ -767,7 +760,7 @@ window.sessionsInit = async function () {
       });
 
     } catch (e) {
-      detailWrap.innerHTML = `<div class="banner banner-error" style="margin-top:12px">${e.message}</div>`;
+      detailWrap.innerHTML = `<div class="alert alert-danger mt-3" role="alert">${e.message}</div>`;
     }
   }
 
@@ -795,22 +788,22 @@ window.sessionsInit = async function () {
           });
         }
         await showSessionDetail(sessionId);
-      } catch (e) { showBanner(e.message); }
+      } catch (e) { window.showToast(e.message); }
     };
   }
 
   function renderObsRow(o, showActions = true) {
     return `
-      <div id="rev-obs-${o.id}" style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);gap:8px">
+      <div id="rev-obs-${o.id}" class="d-flex justify-content-between align-items-start py-2 border-bottom gap-2">
         <div>
-          <span style="color:${TYPE_COLOR[o.type]};font-size:0.75rem;text-transform:uppercase;font-weight:600">${o.type}</span>
+          <span class="${TYPE_CLASS[o.type] ?? 'text-muted'} small text-uppercase fw-semibold">${o.type}</span>
           ${outcomeBadge(o.outcome)}
           ${fmtLinkedSetting(o.setting_id)}
-          <span style="margin-left:8px;font-size:0.875rem">${o.content}</span>
-          ${o.promoted_to ? `<span style="margin-left:8px;font-size:0.75rem;color:var(--success)">→ ${o.promoted_to.replace('_',' ')}</span>` : ''}
+          <span class="ms-2 small">${o.content}</span>
+          ${o.promoted_to ? `<span class="ms-2 small text-success">→ ${o.promoted_to.replace('_',' ')}</span>` : ''}
         </div>
         ${showActions ? `
-          <div class="obs-actions" style="display:flex;gap:6px;flex-shrink:0;align-items:center;flex-wrap:wrap">
+          <div class="obs-actions d-flex gap-2 flex-shrink-0 align-items-center flex-wrap">
             <button class="btn btn-secondary btn-sm rev-promote-note" data-id="${o.id}">→ Note</button>
             <button class="btn btn-secondary btn-sm rev-dismiss" data-id="${o.id}">Dismiss</button>
           </div>` : ''}
@@ -821,24 +814,22 @@ window.sessionsInit = async function () {
   detailWrap.addEventListener('click', async e => {
     const sessionId = currentDetailSessionId;
 
-    // Run toggle observations
     if (e.target.classList.contains('run-toggle-obs')) {
       const runId  = e.target.dataset.runId;
       const obsDiv = document.getElementById(`run-obs-${runId}`);
       if (!obsDiv) return;
-      if (obsDiv.style.display === 'none') {
+      if (obsDiv.classList.contains('d-none')) {
         const runObs = await apiFetch(`/api/observations?run_id=${runId}`);
-        obsDiv.innerHTML  = renderRunObsSection(runObs, runId);
-        obsDiv.style.display = 'block';
+        obsDiv.innerHTML = renderRunObsSection(runObs, runId);
+        obsDiv.classList.remove('d-none');
         e.target.textContent = 'Obs ▴';
       } else {
-        obsDiv.style.display = 'none';
+        obsDiv.classList.add('d-none');
         e.target.textContent = 'Obs ▾';
       }
       return;
     }
 
-    // Run edit
     if (e.target.classList.contains('run-edit-btn')) {
       const runId = e.target.dataset.runId;
       try {
@@ -846,54 +837,49 @@ window.sessionsInit = async function () {
         document.getElementById('det-run-form-wrap').innerHTML = buildRunForm(sessionId, run);
         wireRunForm(sessionId, run);
         document.getElementById('det-run-form-wrap').scrollIntoView({ behavior: 'smooth' });
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
       return;
     }
 
-    // Run delete
     if (e.target.classList.contains('run-del-btn')) {
       const runId = e.target.dataset.runId;
       if (!confirm('Delete this run and its observations?')) return;
       try {
         await apiFetch(`/api/runs/${runId}`, { method: 'DELETE' });
         await showSessionDetail(sessionId);
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
       return;
     }
 
-    // Show add-setting form for a run
     if (e.target.classList.contains('run-add-setting')) {
-      const runId = e.target.dataset.runId;
+      const runId  = e.target.dataset.runId;
       const formDiv = document.getElementById(`run-setting-form-${runId}`);
       if (!formDiv) return;
-      if (formDiv.innerHTML) { formDiv.innerHTML = ''; return; } // toggle off
+      if (formDiv.innerHTML) { formDiv.innerHTML = ''; return; }
       formDiv.innerHTML = buildRunSettingForm(runId);
       return;
     }
 
-    // Show edit form for an existing setting
     if (e.target.classList.contains('run-setting-edit')) {
-      const runId = e.target.dataset.runId;
-      const sid   = e.target.dataset.sid;
+      const runId  = e.target.dataset.runId;
+      const sid    = e.target.dataset.sid;
       const formDiv = document.getElementById(`run-setting-form-${runId}`);
       if (!formDiv) return;
       try {
-        // Find the setting in the current DOM data by fetching the run
-        const run = await apiFetch(`/api/runs/${runId}`);
+        const run      = await apiFetch(`/api/runs/${runId}`);
         const existing = run.settings.find(s => String(s.id) === String(sid));
-        if (!existing) { showBanner('Setting not found'); return; }
+        if (!existing) { window.showToast('Setting not found'); return; }
         formDiv.innerHTML = buildRunSettingForm(runId, existing);
         formDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
       return;
     }
 
-    // Save (add or edit) a setting on a run
     if (e.target.classList.contains('rss-save')) {
-      const runId = e.target.dataset.runId;
-      const mode  = e.target.dataset.mode;   // 'add' | 'edit'
-      const sid   = e.target.dataset.sid;    // set when mode === 'edit'
-      const q     = sel => detailWrap.querySelector(`${sel}[data-run-id="${runId}"]`);
+      const runId  = e.target.dataset.runId;
+      const mode   = e.target.dataset.mode;
+      const sid    = e.target.dataset.sid;
+      const q      = sel => detailWrap.querySelector(`${sel}[data-run-id="${runId}"]`);
       const power  = q('.rss-power')?.value  ?? '';
       const speed  = q('.rss-speed')?.value  ?? '';
       const lpi    = q('.rss-lpi')?.value    ?? '';
@@ -912,9 +898,7 @@ window.sessionsInit = async function () {
       const btn = e.target;
       btn.disabled = true; btn.textContent = '…';
       try {
-        const url    = mode === 'edit'
-          ? `/api/runs/${runId}/settings/${sid}`
-          : `/api/runs/${runId}/settings`;
+        const url    = mode === 'edit' ? `/api/runs/${runId}/settings/${sid}` : `/api/runs/${runId}/settings`;
         const method = mode === 'edit' ? 'PUT' : 'POST';
         const updatedSettings = await apiFetch(url, {
           method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload),
@@ -925,26 +909,24 @@ window.sessionsInit = async function () {
           try { const rr = await apiFetch(`/api/runs/${runId}`); runArtifact = rr; } catch (_) {}
           settingsDiv.innerHTML = updatedSettings.length
             ? updatedSettings.map(s => renderRunSettingRow(s, +runId, runArtifact)).join('')
-            : '<span style="color:var(--text-muted);font-size:0.8rem">No settings yet.</span>';
+            : '<span class="text-muted small">No settings yet.</span>';
         }
         const formDiv = document.getElementById(`run-setting-form-${runId}`);
         if (formDiv) formDiv.innerHTML = '';
       } catch (err) {
-        showBanner(err.message);
+        window.showToast(err.message);
         btn.disabled = false; btn.textContent = mode === 'edit' ? 'Save' : 'Add';
       }
       return;
     }
 
-    // Cancel add-setting form
     if (e.target.classList.contains('rss-cancel')) {
-      const runId  = e.target.dataset.runId;
+      const runId   = e.target.dataset.runId;
       const formDiv = document.getElementById(`run-setting-form-${runId}`);
       if (formDiv) formDiv.innerHTML = '';
       return;
     }
 
-    // Remove a setting from a run
     if (e.target.classList.contains('run-setting-del')) {
       const runId = e.target.dataset.runId;
       const sid   = e.target.dataset.sid;
@@ -957,21 +939,20 @@ window.sessionsInit = async function () {
           try { const rr = await apiFetch(`/api/runs/${runId}`); runArtifact = rr; } catch (_) {}
           settingsDiv.innerHTML = updatedSettings.length
             ? updatedSettings.map(s => renderRunSettingRow(s, runId, runArtifact)).join('')
-            : '<span style="color:var(--text-muted);font-size:0.8rem">No settings yet.</span>';
+            : '<span class="text-muted small">No settings yet.</span>';
         }
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
       return;
     }
 
-    // Run observation add
     if (e.target.classList.contains('run-obs-add')) {
       const runId  = e.target.dataset.runId;
       const input  = detailWrap.querySelector(`.run-obs-input[data-run-id="${runId}"]`);
-      const type    = detailWrap.querySelector(`.run-obs-type[data-run-id="${runId}"]`)?.value;
+      const type   = detailWrap.querySelector(`.run-obs-type[data-run-id="${runId}"]`)?.value;
       const outcome = detailWrap.querySelector(`.run-obs-outcome[data-run-id="${runId}"]`)?.value || null;
       const content = input?.value.trim();
       if (!content) {
-        if (input) { input.style.borderColor = 'var(--accent)'; setTimeout(() => { input.style.borderColor = ''; }, 2000); }
+        if (input) { input.classList.add('is-invalid'); setTimeout(() => input.classList.remove('is-invalid'), 2000); }
         return;
       }
       try {
@@ -983,11 +964,10 @@ window.sessionsInit = async function () {
         const updated = await apiFetch(`/api/observations?run_id=${runId}`);
         const obsDiv  = document.getElementById(`run-obs-${runId}`);
         if (obsDiv) obsDiv.innerHTML = renderRunObsSection(updated, runId);
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
       return;
     }
 
-    // Run observation dismiss
     if (e.target.classList.contains('run-obs-dismiss')) {
       const id    = e.target.dataset.id;
       const runId = e.target.dataset.runId;
@@ -996,11 +976,10 @@ window.sessionsInit = async function () {
         const updated = await apiFetch(`/api/observations?run_id=${runId}`);
         const obsDiv  = document.getElementById(`run-obs-${runId}`);
         if (obsDiv) obsDiv.innerHTML = renderRunObsSection(updated, runId);
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
       return;
     }
 
-    // Session observation handlers
     const id = e.target.dataset.id;
     if (!id) return;
 
@@ -1008,18 +987,17 @@ window.sessionsInit = async function () {
       try {
         await apiFetch(`/api/observations/${id}/dismiss`, { method: 'PUT' });
         await showSessionDetail(sessionId);
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
 
     } else if (e.target.classList.contains('rev-promote-note')) {
-      const row = document.getElementById(`rev-obs-${id}`);
+      const row        = document.getElementById(`rev-obs-${id}`);
       if (!row) return;
       const actionsDiv = row.querySelector('.obs-actions');
       if (!actionsDiv) return;
       actionsDiv.innerHTML = `
         <input id="promote-topic-${id}" type="text"
-          placeholder="Topic (e.g. Glass engraving)"
-          style="font-size:0.825rem;padding:4px 8px;border:1px solid var(--border);
-                 background:var(--surface2);color:var(--text);border-radius:4px;width:220px">
+          class="form-control form-control-sm" style="width:220px"
+          placeholder="Topic (e.g. Glass engraving)">
         <button class="btn btn-primary btn-sm promote-save" data-id="${id}">Save note</button>
         <button class="btn btn-secondary btn-sm promote-cancel" data-id="${id}">✕</button>`;
       document.getElementById(`promote-topic-${id}`)?.focus();
@@ -1037,7 +1015,7 @@ window.sessionsInit = async function () {
       const topic = document.getElementById(`promote-topic-${id}`)?.value.trim();
       if (!topic) {
         const inp = document.getElementById(`promote-topic-${id}`);
-        if (inp) { inp.style.borderColor = 'var(--accent)'; inp.focus(); }
+        if (inp) { inp.classList.add('is-invalid'); inp.focus(); }
         return;
       }
       try {
@@ -1046,13 +1024,13 @@ window.sessionsInit = async function () {
           body: JSON.stringify({ topic }),
         });
         await showSessionDetail(sessionId);
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
     }
   });
 
   // ── Session table ─────────────────────────────────────────────────
   async function loadSessions() {
-    const params = new URLSearchParams();
+    const params    = new URLSearchParams();
     const from      = document.getElementById('sf-from').value;
     const to        = document.getElementById('sf-to').value;
     const status    = document.getElementById('sf-status').value;
@@ -1074,30 +1052,35 @@ window.sessionsInit = async function () {
         ? Math.round(completed.filter(r => r.outcome === 'success').length / completed.length * 100)
         : 0;
 
-      stats.innerHTML = `
-        <div class="stat-box"><div class="stat-val">${counts.planned}</div><div class="stat-lbl">Planned</div></div>
-        <div class="stat-box"><div class="stat-val">${counts.in_progress}</div><div class="stat-lbl">In Progress</div></div>
-        <div class="stat-box"><div class="stat-val">${counts.completed}</div><div class="stat-lbl">Completed</div></div>
-        <div class="stat-box"><div class="stat-val">${counts.aborted}</div><div class="stat-lbl">Aborted</div></div>
-        <div class="stat-box"><div class="stat-val">${rate}%</div><div class="stat-lbl">Success Rate</div></div>`;
-
-      const STATUS_BADGE = { in_progress: '🔴 Active', completed: 'Done', aborted: 'Aborted', planned: 'Planned' };
+      stats.innerHTML = [
+        { val: counts.planned,    lbl: 'Planned' },
+        { val: counts.in_progress, lbl: 'In Progress' },
+        { val: counts.completed,  lbl: 'Completed' },
+        { val: counts.aborted,    lbl: 'Aborted' },
+        { val: rate + '%',        lbl: 'Success Rate' },
+      ].map(s => `
+        <div class="col">
+          <div class="card text-center py-3">
+            <div class="h3 fw-bold mb-0">${s.val}</div>
+            <div class="small text-muted mt-1">${s.lbl}</div>
+          </div>
+        </div>`).join('');
 
       tbody.innerHTML = rows.map(r => `
         <tr data-id="${r.id}">
           <td>${r.job_date}</td>
           <td>${r.project_name_resolved ?? '—'}</td>
-          <td style="text-align:center">${r.run_count ?? 0}</td>
+          <td class="text-center">${r.run_count ?? 0}</td>
           <td>${r.duration_min != null ? r.duration_min + ' min' : '—'}</td>
-          <td style="color:${OUTCOME_COLOR[r.outcome]??'inherit'}">${r.outcome ?? '—'}</td>
-          <td><span class="badge">${STATUS_BADGE[r.status] ?? r.status}</span></td>
+          <td class="${OUTCOME_CLASS[r.outcome] ?? ''}">${r.outcome ?? '—'}</td>
+          <td><span class="badge ${STATUS_BS[r.status] ?? 'bg-secondary'}">${STATUS_LABEL[r.status] ?? r.status}</span></td>
           <td>
             <button class="btn btn-secondary btn-sm view-session" data-id="${r.id}">Edit</button>
-            <button class="btn btn-danger    btn-sm del-session"  data-id="${r.id}">Del</button>
+            <button class="btn btn-danger btn-sm del-session" data-id="${r.id}">Del</button>
           </td>
         </tr>`).join('');
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="7" class="banner banner-error">${e.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-danger">${e.message}</td></tr>`;
     }
   }
 
@@ -1107,7 +1090,7 @@ window.sessionsInit = async function () {
     if (e.target.classList.contains('del-session')) {
       if (!confirm('Delete this session?')) return;
       try { await apiFetch(`/api/usage/${id}`, { method: 'DELETE' }); await refresh(); }
-      catch (err) { showBanner(err.message); }
+      catch (err) { window.showToast(err.message); }
     }
     if (e.target.classList.contains('view-session')) {
       await showSessionDetail(+id);
@@ -1128,7 +1111,7 @@ window.sessionsInit = async function () {
         body: JSON.stringify({ project_id, material, operation, setting_id, file_used, user_id }),
       });
       await refresh();
-    } catch (e) { showBanner(e.message); }
+    } catch (e) { window.showToast(e.message); }
   };
 
   document.getElementById('btn-filter-sessions').onclick = loadSessions;
@@ -1136,11 +1119,11 @@ window.sessionsInit = async function () {
   async function refresh() {
     const active = await apiFetch('/api/usage?status=in_progress');
     const currentSession = active[0] ?? null;
-    document.getElementById('start-session-wrap').style.display = currentSession ? 'none' : 'block';
+    document.getElementById('start-session-wrap').classList.toggle('d-none', !!currentSession);
     await renderActiveSession(currentSession);
     await loadSessions();
   }
 
-  try { await populateDropdowns(); } catch (e) { showBanner('Could not load dropdowns: ' + e.message); }
+  try { await populateDropdowns(); } catch (e) { window.showToast('Could not load dropdowns: ' + e.message); }
   await refresh();
 };

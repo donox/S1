@@ -1,37 +1,47 @@
-<h1>Materials</h1>
+<h1 class="mb-4">Materials</h1>
 
-<div class="warning-box">⚠ Never laser PVC, vinyl, or chlorine-containing materials — toxic gases.</div>
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+  <strong>⚠ Never laser PVC, vinyl, or chlorine-containing materials — toxic gases.</strong>
+</div>
 
 <div id="profiles-section"></div>
 
-<div class="filter-bar" id="settings-filters">
-  <div>
-    <label>Material</label>
-    <select id="filter-material"><option value="">All</option></select>
+<div class="card card-body mb-3" id="settings-filters">
+  <div class="row g-2 align-items-end">
+    <div class="col-auto">
+      <label class="form-label small mb-1">Material</label>
+      <select class="form-select form-select-sm" id="filter-material"><option value="">All</option></select>
+    </div>
+    <div class="col-auto">
+      <label class="form-label small mb-1">Profile</label>
+      <select class="form-select form-select-sm" id="filter-family"><option value="">All profiles</option></select>
+    </div>
+    <div class="col-auto">
+      <label class="form-label small mb-1">Operation</label>
+      <select class="form-select form-select-sm" id="filter-operation">
+        <option value="">All</option>
+        <option value="engrave">Engrave</option>
+        <option value="score">Score</option>
+        <option value="cut">Cut</option>
+      </select>
+    </div>
+    <div class="col-auto d-flex align-items-end pb-1">
+      <div class="form-check mb-0">
+        <input class="form-check-input" type="checkbox" id="filter-archived">
+        <label class="form-check-label small" for="filter-archived">Show archived</label>
+      </div>
+    </div>
+    <div class="col-auto d-flex align-items-end pb-1">
+      <div class="form-check mb-0">
+        <input class="form-check-input" type="checkbox" id="view-summary" checked>
+        <label class="form-check-label small" for="view-summary">Summary view</label>
+      </div>
+    </div>
+    <div class="col-auto align-self-end">
+      <button class="btn btn-secondary btn-sm" id="btn-filter">Filter</button>
+      <button class="btn btn-primary btn-sm ms-1" id="btn-new-setting">+ New</button>
+    </div>
   </div>
-  <div>
-    <label>Profile</label>
-    <select id="filter-family"><option value="">All profiles</option></select>
-  </div>
-  <div>
-    <label>Operation</label>
-    <select id="filter-operation">
-      <option value="">All</option>
-      <option value="engrave">Engrave</option>
-      <option value="score">Score</option>
-      <option value="cut">Cut</option>
-    </select>
-  </div>
-  <div style="display:flex;align-items:center;gap:6px;padding-bottom:2px">
-    <input type="checkbox" id="filter-archived">
-    <label for="filter-archived" style="margin:0">Show archived</label>
-  </div>
-  <div style="display:flex;align-items:center;gap:6px;padding-bottom:2px">
-    <input type="checkbox" id="view-summary" checked>
-    <label for="view-summary" style="margin:0">Summary view</label>
-  </div>
-  <button class="btn btn-secondary btn-sm" id="btn-filter">Filter</button>
-  <button class="btn btn-primary btn-sm" id="btn-new-setting">+ New</button>
 </div>
 
 <div id="setting-form-wrap"></div>

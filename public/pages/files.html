@@ -1,35 +1,41 @@
-<h1>Project Files</h1>
+<h1 class="mb-3">Project Files</h1>
 
-<div class="warning-box" style="font-size:0.8rem">
-  <strong>Naming convention:</strong> <code>ProjectName_Stage_Version_Date.ext</code>
+<div class="alert alert-secondary d-flex align-items-center gap-2 mb-3 small" role="alert">
+  <strong>Naming convention:</strong>
+  <code>ProjectName_Stage_Version_Date.ext</code>
   &nbsp;·&nbsp; e.g. <code>FlowerDesign_Vector_V2_230424.svg</code>
 </div>
 
-<div class="filter-bar">
-  <div>
-    <label>Extension</label>
-    <select id="f-ext">
-      <option value="">All</option>
-      <option value="svg">svg</option>
-      <option value="lbrn">lbrn</option>
-      <option value="xcs">xcs</option>
-      <option value="png">png</option>
-      <option value="xcf">xcf</option>
-    </select>
+<div class="card card-body mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-auto">
+      <label class="form-label small mb-1">Extension</label>
+      <select class="form-select form-select-sm" id="f-ext">
+        <option value="">All</option>
+        <option value="svg">svg</option>
+        <option value="lbrn">lbrn</option>
+        <option value="xcs">xcs</option>
+        <option value="png">png</option>
+        <option value="xcf">xcf</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <label class="form-label small mb-1">Tag</label>
+      <select class="form-select form-select-sm" id="f-tag">
+        <option value="">All</option>
+        <option value="keep">Keep</option>
+        <option value="review">Review</option>
+        <option value="delete">Delete</option>
+      </select>
+    </div>
+    <div class="col-auto align-self-end">
+      <button class="btn btn-secondary btn-sm" id="btn-filter-files">Filter</button>
+      <button class="btn btn-primary btn-sm ms-1" id="btn-scan">Scan Directory</button>
+    </div>
+    <div class="col-auto align-self-end">
+      <span class="text-muted small" id="scan-result"></span>
+    </div>
   </div>
-  <div>
-    <label>Tag</label>
-    <select id="f-tag">
-      <option value="">All</option>
-      <option value="keep">Keep</option>
-      <option value="review">Review</option>
-      <option value="delete">Delete</option>
-    </select>
-  </div>
-  <button class="btn btn-secondary btn-sm" id="btn-filter-files">Filter</button>
-  <button class="btn btn-primary btn-sm" id="btn-scan">Scan Directory</button>
-  <span id="scan-result" style="font-size:0.8rem;color:var(--text-muted)"></span>
 </div>
 
-<div id="files-banner"></div>
 <div id="files-list"></div>

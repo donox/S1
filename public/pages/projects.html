@@ -1,18 +1,17 @@
-<h1>Projects</h1>
+<h1 class="mb-4">Projects</h1>
 
-<div id="proj-status-counts" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap"></div>
+<div id="proj-status-counts" class="d-flex gap-2 flex-wrap mb-3"></div>
 
-<div style="display:flex;gap:10px;margin-bottom:20px;align-items:center">
-  <select id="proj-status-filter" style="min-width:130px">
+<div class="d-flex gap-2 align-items-center mb-4">
+  <select class="form-select form-select-sm" id="proj-status-filter" style="width:auto">
     <option value="" selected>All</option>
     <option value="active">Active</option>
     <option value="paused">Paused</option>
     <option value="complete">Complete</option>
     <option value="abandoned">Abandoned</option>
   </select>
-  <button class="btn btn-primary" id="btn-new-project">+ New Project</button>
+  <button class="btn btn-primary btn-sm" id="btn-new-project">+ New Project</button>
 </div>
 
 <div id="project-form-wrap"></div>
-<div id="projects-banner"></div>
 <div id="projects-list"></div>

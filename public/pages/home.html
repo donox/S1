@@ -1,35 +1,37 @@
-<h1>xTool S1 — Home</h1>
+<h1 class="mb-4">xTool S1 — Home</h1>
 
-<div class="warning-box" style="font-size:0.95rem">
-  ⛔ <strong>NEVER laser PVC, vinyl, or any chlorine-containing material.</strong>
-  <a href="/reference" data-page="reference" id="home-ref-link" style="color:var(--accent2);margin-left:8px">→ Full Safety Checklist</a>
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
+  <strong>NEVER laser PVC, vinyl, or any chlorine-containing material.</strong>
+  <a href="/reference" data-page="reference" id="home-ref-link" class="alert-link ms-2">→ Full Safety Checklist</a>
 </div>
 
 <!-- Quick nav cards -->
-<div id="home-nav" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:28px"></div>
+<div id="home-nav" class="grid-auto mb-4"></div>
 
-<!-- ── Session context ───────────────────────────────────────────── -->
-<h2>Current Session</h2>
+<!-- Session context -->
+<h2 class="h5 mb-3">Current Session</h2>
 <div id="session-context">
-  <p class="loading">Checking for active session…</p>
+  <p class="text-muted">Checking for active session…</p>
 </div>
 
-<!-- ── Active projects ────────────────────────────────────────────── -->
-<div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 8px">
-  <h2 style="margin:0">Active Projects</h2>
+<!-- Active projects -->
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+  <h2 class="h5 mb-0">Active Projects</h2>
   <button class="btn btn-secondary btn-sm" id="btn-quick-project">+ New Project</button>
 </div>
 <div id="quick-project-form"></div>
 <div id="home-projects"></div>
 
 <!-- Stats strip -->
-<div class="stats-strip" id="home-stats" style="margin:24px 0 8px"></div>
+<div class="row g-3 mt-4 mb-2" id="home-stats"></div>
 
 <!-- Recent sessions -->
-<h2 style="margin-top:24px">Recent Sessions</h2>
-<div class="table-wrap">
-  <table>
-    <thead><tr><th>Date</th><th>Project</th><th>Runs</th><th>Outcome</th><th>Status</th></tr></thead>
+<h2 class="h5 mt-3 mb-2">Recent Sessions</h2>
+<div class="table-responsive">
+  <table class="table table-hover table-sm">
+    <thead>
+      <tr><th>Date</th><th>Project</th><th>Runs</th><th>Outcome</th><th>Status</th></tr>
+    </thead>
     <tbody id="recent-sessions"></tbody>
   </table>
 </div>

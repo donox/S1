@@ -1,7 +1,6 @@
 window.usageInit = async function () {
   const tbody  = document.getElementById('usage-body');
   const stats  = document.getElementById('usage-stats');
-  const banner = document.getElementById('usage-banner');
 
   // Set today's date as default
   document.getElementById('u-date').value = new Date().toISOString().slice(0, 10);
@@ -11,11 +10,6 @@ window.usageInit = async function () {
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || r.statusText);
     return data;
-  }
-
-  function showBanner(msg, type = 'error') {
-    banner.innerHTML = `<div class="banner banner-${type}">${msg}</div>`;
-    setTimeout(() => { banner.innerHTML = ''; }, 4000);
   }
 
   // Populate setting dropdown
@@ -74,9 +68,9 @@ window.usageInit = async function () {
     };
     try {
       await apiFetch('/api/usage', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      showBanner('Session logged.', 'success');
+      window.showToast('Session logged.', 'success');
       await loadData();
-    } catch (e) { showBanner(e.message); }
+    } catch (e) { window.showToast(e.message); }
   };
 
   tbody.addEventListener('click', async e => {
@@ -85,7 +79,7 @@ window.usageInit = async function () {
     try {
       await apiFetch(`/api/usage/${e.target.dataset.id}`, { method: 'DELETE' });
       await loadData();
-    } catch (err) { showBanner(err.message); }
+    } catch (err) { window.showToast(err.message); }
   });
 
   await loadData();

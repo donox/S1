@@ -1,11 +1,15 @@
-<h1>Notes &amp; Learning Tracker</h1>
+<h1 class="mb-4">Notes &amp; Learning Tracker</h1>
 
-<div class="inline-form" id="note-form">
-  <h2>Add Note</h2>
-  <div class="form-row">
-    <div style="flex:1"><label>Topic</label><input id="n-topic" type="text" placeholder="e.g. Wood engraving"></div>
-    <div><label>Status</label>
-      <select id="n-status">
+<div class="card card-body mb-3">
+  <h2 class="h6 mb-3">Add Note</h2>
+  <div class="row g-2 mb-2">
+    <div class="col-md">
+      <label class="form-label small">Topic</label>
+      <input class="form-control form-control-sm" id="n-topic" type="text" placeholder="e.g. Wood engraving">
+    </div>
+    <div class="col-md-auto">
+      <label class="form-label small">Status</label>
+      <select class="form-select form-select-sm" id="n-status">
         <option value="note">Note</option>
         <option value="question">Question</option>
         <option value="try">Try This</option>
@@ -13,23 +17,22 @@
       </select>
     </div>
   </div>
-  <div class="form-row">
-    <div style="flex:1"><label>Content</label><textarea id="n-content"></textarea></div>
+  <div class="mb-3">
+    <label class="form-label small">Content</label>
+    <textarea class="form-control form-control-sm" id="n-content" rows="3"></textarea>
   </div>
-  <div style="display:flex;gap:8px">
-    <button class="btn btn-primary" id="n-save">Add</button>
-    <button class="btn btn-secondary" id="n-export">Export to Clipboard</button>
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary btn-sm" id="n-save">Add</button>
+    <button class="btn btn-secondary btn-sm" id="n-export">Export to Clipboard</button>
   </div>
 </div>
 
-<div id="notes-banner"></div>
-
-<div class="tabs" id="notes-tabs">
-  <button class="tab-btn active" data-status="">All</button>
-  <button class="tab-btn" data-status="note">Notes</button>
-  <button class="tab-btn" data-status="question">Questions</button>
-  <button class="tab-btn" data-status="try">Try This</button>
-  <button class="tab-btn" data-status="learned">Learned</button>
-</div>
+<ul class="nav nav-pills mb-3" id="notes-tabs">
+  <li class="nav-item"><button class="nav-link active" data-status="">All</button></li>
+  <li class="nav-item"><button class="nav-link" data-status="note">Notes</button></li>
+  <li class="nav-item"><button class="nav-link" data-status="question">Questions</button></li>
+  <li class="nav-item"><button class="nav-link" data-status="try">Try This</button></li>
+  <li class="nav-item"><button class="nav-link" data-status="learned">Learned</button></li>
+</ul>
 
 <div id="notes-list"></div>

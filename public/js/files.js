@@ -1,6 +1,5 @@
 window.filesInit = async function () {
-  const list   = document.getElementById('files-list');
-  const banner = document.getElementById('files-banner');
+  const list       = document.getElementById('files-list');
   const scanResult = document.getElementById('scan-result');
 
   async function apiFetch(url, opts) {
@@ -8,11 +7,6 @@ window.filesInit = async function () {
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || r.statusText);
     return data;
-  }
-
-  function showBanner(msg, type = 'error') {
-    banner.innerHTML = `<div class="banner banner-${type}">${msg}</div>`;
-    setTimeout(() => { banner.innerHTML = ''; }, 5000);
   }
 
   function fmt(bytes) {
@@ -29,29 +23,31 @@ window.filesInit = async function () {
     if (tag) params.set('tag', tag);
     try {
       const rows = await apiFetch(`/api/files?${params}`);
-      if (!rows.length) { list.innerHTML = '<p style="color:var(--text-muted)">No files indexed. Click Scan Directory.</p>'; return; }
+      if (!rows.length) { list.innerHTML = '<p class="text-muted">No files indexed. Click Scan Directory.</p>'; return; }
       list.innerHTML = rows.map(r => `
-        <div class="card" style="display:flex;gap:16px;align-items:flex-start">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <span class="badge">${r.ext || '?'}</span>
-              <strong style="word-break:break-all">${r.filename}</strong>
-              <span style="font-size:0.75rem;color:var(--text-muted)">${fmt(r.size_bytes)}</span>
+        <div class="card mb-2">
+          <div class="card-body py-2 d-flex gap-3 align-items-start">
+            <div class="flex-grow-1 min-width-0">
+              <div class="d-flex gap-2 align-items-center flex-wrap">
+                <span class="badge text-bg-secondary">${r.ext || '?'}</span>
+                <strong class="text-break">${r.filename}</strong>
+                <span class="text-muted" style="font-size:0.75rem">${fmt(r.size_bytes)}</span>
+              </div>
+              <div class="text-muted text-break mt-1" style="font-size:0.75rem">${r.filepath}</div>
             </div>
-            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;word-break:break-all">${r.filepath}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-            <select class="tag-sel" data-id="${r.id}" style="font-size:0.8rem;padding:4px 8px">
-              <option value="keep"   ${r.tag==='keep'  ?'selected':''}>Keep</option>
-              <option value="review" ${r.tag==='review'?'selected':''}>Review</option>
-              <option value="delete" ${r.tag==='delete'?'selected':''}>Delete</option>
-            </select>
-            <button class="btn btn-danger btn-sm del-file" data-id="${r.id}">Delete File</button>
-            <button class="btn btn-secondary btn-sm rm-index" data-id="${r.id}">Remove Index</button>
+            <div class="d-flex flex-column gap-1 flex-shrink-0">
+              <select class="form-select form-select-sm tag-sel" data-id="${r.id}">
+                <option value="keep"   ${r.tag==='keep'  ?'selected':''}>Keep</option>
+                <option value="review" ${r.tag==='review'?'selected':''}>Review</option>
+                <option value="delete" ${r.tag==='delete'?'selected':''}>Delete</option>
+              </select>
+              <button class="btn btn-danger btn-sm del-file" data-id="${r.id}">Delete File</button>
+              <button class="btn btn-secondary btn-sm rm-index" data-id="${r.id}">Remove Index</button>
+            </div>
           </div>
         </div>`).join('');
     } catch (e) {
-      list.innerHTML = `<div class="banner banner-error">${e.message}</div>`;
+      list.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
     }
   }
 
@@ -60,7 +56,7 @@ window.filesInit = async function () {
       const { scanned } = await apiFetch('/api/files/scan', { method: 'POST' });
       scanResult.textContent = `Scanned ${scanned} file(s)`;
       await loadData();
-    } catch (e) { showBanner(e.message); }
+    } catch (e) { window.showToast(e.message); }
   };
 
   document.getElementById('btn-filter-files').onclick = loadData;
@@ -71,7 +67,7 @@ window.filesInit = async function () {
     const tag = e.target.value;
     try {
       await apiFetch(`/api/files/${id}/tag`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ tag }) });
-    } catch (err) { showBanner(err.message); }
+    } catch (err) { window.showToast(err.message); }
   });
 
   list.addEventListener('click', async e => {
@@ -81,15 +77,15 @@ window.filesInit = async function () {
       if (!confirm('Permanently delete this file from disk? This cannot be undone.')) return;
       try {
         await apiFetch(`/api/files/${id}/delete-file`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ confirm: true }) });
-        showBanner('File deleted from disk.', 'success');
+        window.showToast('File deleted from disk.', 'success');
         await loadData();
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
     }
     if (e.target.classList.contains('rm-index')) {
       try {
         await apiFetch(`/api/files/${id}`, { method: 'DELETE' });
         await loadData();
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
     }
   });
 

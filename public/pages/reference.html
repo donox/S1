@@ -1,128 +1,142 @@
-<h1>Quick Reference</h1>
-<p style="color:var(--text-muted);margin-bottom:20px;font-size:0.875rem">Print-friendly — sidebar hidden in print mode.</p>
+<h1 class="mb-2">Quick Reference</h1>
+<p class="text-muted small mb-4">Print-friendly — sidebar hidden in print mode.</p>
 
-<div class="warning-box" style="font-size:0.9rem">
-  ⛔ <strong>NEVER laser:</strong> PVC, vinyl, or any chlorine-containing material. Releases toxic gas. Check material before use.
+<div class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
+  <strong>⛔ NEVER laser:</strong> PVC, vinyl, or any chlorine-containing material. Releases toxic gas. Check material before use.
 </div>
 
-<div class="card">
-  <div class="card-title">Pre-Job Safety Checklist</div>
-  <ul style="margin-top:8px;padding-left:18px;font-size:0.875rem;line-height:2">
-    <li>Ventilation running / window open</li>
-    <li>Material confirmed — <strong>no PVC or vinyl</strong></li>
-    <li>Auto-focus run (or manual focus set)</li>
-    <li>Red cross alignment verified on workpiece</li>
-    <li>Lid closed / enclosure secured</li>
-    <li>Fire extinguisher within reach</li>
-    <li>Do not leave machine unattended during run</li>
-  </ul>
-</div>
-
-<div class="card">
-  <div class="card-title">Operation Mode Guide</div>
-  <table style="margin-top:8px;font-size:0.875rem">
-    <thead><tr><th>Mode</th><th>Path type</th><th>Typical use</th><th>Speed</th></tr></thead>
-    <tbody>
-      <tr><td><strong>Score</strong></td><td>Vector</td><td>Fine lines, outlines, detail paths</td><td>Fast</td></tr>
-      <tr><td><strong>Engrave</strong></td><td>Raster</td><td>Fill areas, photographs, tone</td><td>Slow</td></tr>
-      <tr><td><strong>Cut</strong></td><td>Vector</td><td>Sever material completely</td><td>Very slow, multi-pass</td></tr>
-    </tbody>
-  </table>
-  <p style="margin-top:10px;font-size:0.8rem;color:var(--text-muted)">
-    Decision: vector line art → Score. Filled area / photo → Engrave. Through-cut → Cut.
-  </p>
-</div>
-
-<div class="card">
-  <div class="card-title">AI → GIMP → Inkscape → Laser Workflow</div>
-  <ol style="margin-top:8px;padding-left:18px;font-size:0.875rem;line-height:2">
-    <li><strong>AI</strong> — generate or source image</li>
-    <li><strong>GIMP</strong> — adjust contrast, greyscale, clean noise → export PNG</li>
-    <li><strong>Inkscape</strong> — Path › Trace Bitmap → simplify → export SVG</li>
-    <li><strong>XCS / LightBurn</strong> — import SVG, set parameters, run</li>
-  </ol>
-  <p style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">
-    File naming: <code>ProjectName_Stage_Version_Date.ext</code><br>
-    e.g. <code>FlowerDesign_Vector_V2_230424.svg</code>
-  </p>
-</div>
-
-<div class="card">
-  <div class="card-title">Inlay Painting Steps</div>
-  <ol style="margin-top:8px;padding-left:18px;font-size:0.875rem;line-height:2">
-    <li>Engrave design to desired depth</li>
-    <li>Apply acrylic paint into recessed areas</li>
-    <li>Let dry fully</li>
-    <li>Sand flush with surface (fine grit)</li>
-    <li>Repeat for additional colours with masking</li>
-    <li>Apply clear coat to protect inlay</li>
-  </ol>
-</div>
-
-<div class="card">
-  <div class="card-title">Material Test Procedure</div>
-  <ol style="margin-top:8px;padding-left:18px;font-size:0.875rem;line-height:2">
-    <li>Use XCS Material Test Array feature (or manually set up a grid)</li>
-    <li>Set a range of power (e.g. 30–80%) and speed (e.g. 200–400 mm/sec)</li>
-    <li>Run array on scrap of target material</li>
-    <li>Identify best result — note power, speed, LPI, passes</li>
-    <li>Record in Settings database with ★ starred</li>
-  </ol>
-</div>
-
-<div class="card">
-  <div class="card-title">External Resources</div>
-  <p style="font-size:0.8rem;color:var(--text-muted);margin:6px 0 14px">
-    These links point to current external sources. Check periodically — they go stale.
-  </p>
-
-  <div style="font-size:0.875rem;margin-bottom:12px">
-    <div style="font-weight:700;color:var(--accent2);margin-bottom:6px">Official xTool</div>
-    <ul style="padding-left:18px;line-height:2">
-      <li><a href="https://www.xtool.com/pages/xtool-s1" target="_blank" rel="noopener">xTool S1 product page</a></li>
-      <li><a href="https://support.xtool.com/category/xtool-s1" target="_blank" rel="noopener">xTool S1 support &amp; documentation</a></li>
-      <li><a href="https://www.xtool.com/pages/material-settings" target="_blank" rel="noopener">xTool official material settings</a></li>
-      <li><a href="https://www.xtool.com/pages/xtool-creative-space" target="_blank" rel="noopener">xTool Creative Space (XCS) downloads</a></li>
-    </ul>
-  </div>
-
-  <div style="font-size:0.875rem;margin-bottom:12px">
-    <div style="font-weight:700;color:var(--accent2);margin-bottom:6px">Community Parameter Databases</div>
-    <ul style="padding-left:18px;line-height:2">
-      <li><a href="https://www.reddit.com/r/xtool/" target="_blank" rel="noopener">r/xtool — community Q&amp;A and settings sharing</a></li>
-      <li><a href="https://www.reddit.com/r/lasercutting/" target="_blank" rel="noopener">r/lasercutting — broader laser community</a></li>
-      <li><a href="https://lightburnsoftware.com/pages/community" target="_blank" rel="noopener">LightBurn community forum</a></li>
-    </ul>
-  </div>
-
-  <div style="font-size:0.875rem;margin-bottom:12px">
-    <div style="font-weight:700;color:var(--accent2);margin-bottom:6px">Technique Guides</div>
-    <ul style="padding-left:18px;line-height:2">
-      <li><a href="https://www.instructables.com/Laser-Engraving-and-Cutting/" target="_blank" rel="noopener">Instructables — laser engraving &amp; cutting techniques</a></li>
-      <li><a href="https://www.youtube.com/results?search_query=xtool+s1+settings" target="_blank" rel="noopener">YouTube — xTool S1 settings &amp; tutorials</a></li>
-    </ul>
-  </div>
-
-  <div style="font-size:0.875rem">
-    <div style="font-weight:700;color:var(--accent2);margin-bottom:6px">Software</div>
-    <ul style="padding-left:18px;line-height:2">
-      <li><a href="https://lightburnsoftware.com" target="_blank" rel="noopener">LightBurn — download &amp; documentation</a></li>
-      <li><a href="https://inkscape.org" target="_blank" rel="noopener">Inkscape — vector editor (free)</a></li>
-      <li><a href="https://www.gimp.org" target="_blank" rel="noopener">GIMP — image editor (free)</a></li>
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-2">Pre-Job Safety Checklist</h2>
+    <ul class="mb-0 small" style="line-height:2;padding-left:1.2rem">
+      <li>Ventilation running / window open</li>
+      <li>Material confirmed — <strong>no PVC or vinyl</strong></li>
+      <li>Auto-focus run (or manual focus set)</li>
+      <li>Red cross alignment verified on workpiece</li>
+      <li>Lid closed / enclosure secured</li>
+      <li>Fire extinguisher within reach</li>
+      <li>Do not leave machine unattended during run</li>
     </ul>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-title">Key Parameter Reference</div>
-  <table style="margin-top:8px;font-size:0.875rem">
-    <thead><tr><th>Param</th><th>Unit</th><th>Notes</th></tr></thead>
-    <tbody>
-      <tr><td>Power</td><td>0–100 %</td><td>% of max laser output</td></tr>
-      <tr><td>Speed</td><td>mm/sec</td><td>Lower = slower = more energy = deeper</td></tr>
-      <tr><td>LPI</td><td>lines/inch</td><td>Raster density — higher = finer, slower</td></tr>
-      <tr><td>Passes</td><td>count</td><td>Re-traversals of same path</td></tr>
-      <tr><td>Focus offset</td><td>mm</td><td>Negative = closer to material (e.g. Baltic Birch cut: −2)</td></tr>
-    </tbody>
-  </table>
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-2">Operation Mode Guide</h2>
+    <div class="table-responsive">
+      <table class="table table-sm small mb-2">
+        <thead><tr><th>Mode</th><th>Path type</th><th>Typical use</th><th>Speed</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Score</strong></td><td>Vector</td><td>Fine lines, outlines, detail paths</td><td>Fast</td></tr>
+          <tr><td><strong>Engrave</strong></td><td>Raster</td><td>Fill areas, photographs, tone</td><td>Slow</td></tr>
+          <tr><td><strong>Cut</strong></td><td>Vector</td><td>Sever material completely</td><td>Very slow, multi-pass</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-muted small mb-0">Decision: vector line art → Score. Filled area / photo → Engrave. Through-cut → Cut.</p>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-2">AI → GIMP → Inkscape → Laser Workflow</h2>
+    <ol class="small mb-2" style="line-height:2;padding-left:1.2rem">
+      <li><strong>AI</strong> — generate or source image</li>
+      <li><strong>GIMP</strong> — adjust contrast, greyscale, clean noise → export PNG</li>
+      <li><strong>Inkscape</strong> — Path › Trace Bitmap → simplify → export SVG</li>
+      <li><strong>XCS / LightBurn</strong> — import SVG, set parameters, run</li>
+    </ol>
+    <p class="text-muted small mb-0">
+      File naming: <code>ProjectName_Stage_Version_Date.ext</code><br>
+      e.g. <code>FlowerDesign_Vector_V2_230424.svg</code>
+    </p>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-2">Inlay Painting Steps</h2>
+    <ol class="small mb-0" style="line-height:2;padding-left:1.2rem">
+      <li>Engrave design to desired depth</li>
+      <li>Apply acrylic paint into recessed areas</li>
+      <li>Let dry fully</li>
+      <li>Sand flush with surface (fine grit)</li>
+      <li>Repeat for additional colours with masking</li>
+      <li>Apply clear coat to protect inlay</li>
+    </ol>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-2">Material Test Procedure</h2>
+    <ol class="small mb-0" style="line-height:2;padding-left:1.2rem">
+      <li>Use XCS Material Test Array feature (or manually set up a grid)</li>
+      <li>Set a range of power (e.g. 30–80%) and speed (e.g. 200–400 mm/sec)</li>
+      <li>Run array on scrap of target material</li>
+      <li>Identify best result — note power, speed, LPI, passes</li>
+      <li>Record in Settings database with ★ starred</li>
+    </ol>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-2">External Resources</h2>
+    <p class="text-muted small mb-3">These links point to current external sources. Check periodically — they go stale.</p>
+
+    <div class="mb-3">
+      <div class="fw-bold text-warning small mb-1">Official xTool</div>
+      <ul class="small mb-0" style="line-height:2;padding-left:1.2rem">
+        <li><a href="https://www.xtool.com/pages/xtool-s1" target="_blank" rel="noopener">xTool S1 product page</a></li>
+        <li><a href="https://support.xtool.com/category/xtool-s1" target="_blank" rel="noopener">xTool S1 support &amp; documentation</a></li>
+        <li><a href="https://www.xtool.com/pages/material-settings" target="_blank" rel="noopener">xTool official material settings</a></li>
+        <li><a href="https://www.xtool.com/pages/xtool-creative-space" target="_blank" rel="noopener">xTool Creative Space (XCS) downloads</a></li>
+      </ul>
+    </div>
+
+    <div class="mb-3">
+      <div class="fw-bold text-warning small mb-1">Community Parameter Databases</div>
+      <ul class="small mb-0" style="line-height:2;padding-left:1.2rem">
+        <li><a href="https://www.reddit.com/r/xtool/" target="_blank" rel="noopener">r/xtool — community Q&amp;A and settings sharing</a></li>
+        <li><a href="https://www.reddit.com/r/lasercutting/" target="_blank" rel="noopener">r/lasercutting — broader laser community</a></li>
+        <li><a href="https://lightburnsoftware.com/pages/community" target="_blank" rel="noopener">LightBurn community forum</a></li>
+      </ul>
+    </div>
+
+    <div class="mb-3">
+      <div class="fw-bold text-warning small mb-1">Technique Guides</div>
+      <ul class="small mb-0" style="line-height:2;padding-left:1.2rem">
+        <li><a href="https://www.instructables.com/Laser-Engraving-and-Cutting/" target="_blank" rel="noopener">Instructables — laser engraving &amp; cutting techniques</a></li>
+        <li><a href="https://www.youtube.com/results?search_query=xtool+s1+settings" target="_blank" rel="noopener">YouTube — xTool S1 settings &amp; tutorials</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <div class="fw-bold text-warning small mb-1">Software</div>
+      <ul class="small mb-0" style="line-height:2;padding-left:1.2rem">
+        <li><a href="https://lightburnsoftware.com" target="_blank" rel="noopener">LightBurn — download &amp; documentation</a></li>
+        <li><a href="https://inkscape.org" target="_blank" rel="noopener">Inkscape — vector editor (free)</a></li>
+        <li><a href="https://www.gimp.org" target="_blank" rel="noopener">GIMP — image editor (free)</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-2">Key Parameter Reference</h2>
+    <div class="table-responsive">
+      <table class="table table-sm small mb-0">
+        <thead><tr><th>Param</th><th>Unit</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Power</td><td>0–100 %</td><td>% of max laser output</td></tr>
+          <tr><td>Speed</td><td>mm/sec</td><td>Lower = slower = more energy = deeper</td></tr>
+          <tr><td>LPI</td><td>lines/inch</td><td>Raster density — higher = finer, slower</td></tr>
+          <tr><td>Passes</td><td>count</td><td>Re-traversals of same path</td></tr>
+          <tr><td>Focus offset</td><td>mm</td><td>Negative = closer to material (e.g. Baltic Birch cut: −2)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>

@@ -1,0 +1,136 @@
+/* Phase 6: Bootstrap 5.3 dark theme — palette overrides and custom utilities */
+
+[data-bs-theme="dark"] {
+  --bs-primary:        #e94560;
+  --bs-primary-rgb:    233, 69, 96;
+  --bs-warning:        #f5a623;
+  --bs-warning-rgb:    245, 166, 35;
+  --bs-success:        #27ae60;
+  --bs-success-rgb:    39, 174, 96;
+  --bs-danger:         #c0392b;
+  --bs-danger-rgb:     192, 57, 43;
+  --bs-body-bg:        #12121f;
+  --bs-body-color:     #f0f0f0;
+  --bs-card-bg:        #1c2340;
+  --bs-border-color:   #2e3560;
+  --bs-secondary-bg:   #243060;
+  --bs-tertiary-bg:    #243060;
+}
+
+/* ── Body / layout ───────────────────────────────────────────────── */
+body { min-height: 100vh; }
+#content { overflow-y: auto; }
+
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+#sidebar {
+  width: 220px;
+  min-height: 100vh;
+  flex-shrink: 0;
+  background: var(--bs-card-bg);
+  border-right: 1px solid var(--bs-border-color);
+}
+
+.sidebar-brand {
+  padding: 18px 16px 12px;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.sidebar-logo { font-size: 1.1rem; }
+
+#sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.65);
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  padding: 10px 20px;
+  transition: color 0.15s, border-left-color 0.15s, background-color 0.15s;
+}
+
+#sidebar .nav-link:hover,
+#sidebar .nav-link.active {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.07);
+  border-left-color: var(--bs-primary);
+}
+
+/* ── Auto-fill grid (no Bootstrap equivalent) ────────────────────── */
+.grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Section divider with rule line ─────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 36px 0 18px;
+  padding-top: 20px;
+  border-top: 1px solid var(--bs-border-color);
+}
+.section-header h2 {
+  margin: 0;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bs-secondary-color);
+}
+.section-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--bs-border-color), transparent);
+}
+
+/* ── Session state card accents ──────────────────────────────────── */
+.active-session-card  { border-left: 4px solid var(--bs-success) !important; }
+.session-detail-card  { border-left: 4px solid var(--bs-warning) !important; }
+
+/* ── Highlighted table row (detail panel open) ───────────────────── */
+tr.row-selected td { background: rgba(245, 166, 35, 0.07) !important; }
+
+/* ── Nav card letter badge ───────────────────────────────────────── */
+.nav-card-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.nav-card { transition: border-color 0.15s; }
+.nav-card:hover { border-color: var(--card-accent) !important; }
+
+/* ── Miscellaneous utilities ─────────────────────────────────────── */
+.border-dashed  { border-style: dashed !important; }
+.clickable      { cursor: pointer; }
+.progress-thin  { height: 4px; }
+.btn-xs         { padding: 1px 6px; font-size: 0.75rem; }
+.min-h-feedback { min-height: 1.2em; }
+
+/* ── Auto-fill wide grid (runs list) ─────────────────────────────── */
+.grid-wide {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.75rem;
+}
+
+/* ── Checklist items ─────────────────────────────────────────────── */
+.checklist-readonly .form-check-label { cursor: default; pointer-events: none; }
+
+/* ── AI insight slot (reserved — not yet implemented) ────────────── */
+.ai-insight { border-left: 3px solid var(--bs-info); }
+
+/* ── Print (Quick Reference page) ───────────────────────────────── */
+@media print {
+  #sidebar  { display: none !important; }
+  #content  { padding: 0; }
+  body      { background: #fff !important; color: #000 !important; }
+  .btn      { display: none !important; }
+}

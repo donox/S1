@@ -25,22 +25,14 @@ window.settingsInit = async function () {
     return data;
   }
 
-  function showBanner(msg, type = 'error') {
-    const b = document.createElement('div');
-    b.className = `banner banner-${type}`;
-    b.textContent = msg;
-    formWrap.prepend(b);
-    if (type !== 'error') setTimeout(() => b.remove(), 4000);
-  }
-
   const ROLE_BADGE = {
-    confirmed: '<span class="badge" style="color:#27ae60;border:1px solid #27ae60">✓ confirmed</span>',
-    candidate: '<span class="badge" style="color:var(--text-muted)">candidate</span>',
-    archived:  '<span class="badge" style="color:var(--border)">archived</span>',
+    confirmed: '<span class="badge text-bg-success">✓ confirmed</span>',
+    candidate: '<span class="badge bg-transparent border text-muted">candidate</span>',
+    archived:  '<span class="badge bg-transparent border text-secondary opacity-50">archived</span>',
   };
 
   function renderParams(r) {
-    return `<span style="font-size:0.875rem;color:var(--text-muted)">` +
+    return `<span class="text-muted small">` +
       `${r.power ?? '—'}% &nbsp;·&nbsp; ${r.speed ?? '—'} mm/sec` +
       `${r.lines_per_inch ? ` &nbsp;·&nbsp; ${r.lines_per_inch} LPI` : ''}` +
       `${r.passes > 1 ? ` &nbsp;·&nbsp; ${r.passes} passes` : ''}` +
@@ -50,7 +42,7 @@ window.settingsInit = async function () {
 
   function renderLineage(r) {
     if (!r.parent_id) return '';
-    return `<span style="font-size:0.8rem;color:var(--text-muted)" title="Derived from #${r.parent_id}">↳ #${r.parent_id}</span>`;
+    return `<span class="text-muted small" title="Derived from #${r.parent_id}">↳ #${r.parent_id}</span>`;
   }
 
   // ── Materials dropdown ────────────────────────────────────────────
@@ -86,13 +78,12 @@ window.settingsInit = async function () {
     });
 
     const famRows = Object.keys(byMat).sort().map(mat => `
-      <div style="margin-bottom:14px">
-        <div style="font-weight:600;margin-bottom:6px;font-size:0.9rem">${escHtml(mat)}</div>
+      <div class="mb-3">
+        <div class="fw-semibold mb-2 small">${escHtml(mat)}</div>
         ${byMat[mat].map(f => `
-          <div class="profile-row" data-fid="${f.id}"
-               style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-            <span style="flex:1">${escHtml(f.profile_name)}${f.description
-              ? ` <small style="color:var(--text-muted)"> — ${escHtml(f.description)}</small>` : ''}</span>
+          <div class="profile-row d-flex align-items-center gap-2 py-1 border-bottom" data-fid="${f.id}">
+            <span class="flex-grow-1 small">${escHtml(f.profile_name)}${f.description
+              ? ` <span class="text-muted"> — ${escHtml(f.description)}</span>` : ''}</span>
             <button class="btn btn-secondary btn-sm profile-rename-btn" data-fid="${f.id}">Rename</button>
             <button class="btn btn-danger btn-sm profile-del-btn" data-fid="${f.id}">Del</button>
           </div>`).join('')}
@@ -100,23 +91,28 @@ window.settingsInit = async function () {
 
     const hasExisting = families.length > 0;
     profilesSection.innerHTML = `
-      <details style="margin-bottom:16px">
-        <summary style="cursor:pointer;font-weight:600;padding:8px 0;color:var(--text-muted);
-                        font-size:0.85rem;letter-spacing:0.06em;text-transform:uppercase;user-select:none">
-          Material Profiles (${families.length})
+      <details class="mb-3">
+        <summary class="text-muted small fw-bold text-uppercase clickable" style="letter-spacing:0.06em;list-style:none;padding:8px 0;user-select:none">
+          ▶ Material Profiles (${families.length})
         </summary>
-        <div class="card" style="margin-top:8px">
-          ${famRows || '<p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:12px">No profiles yet.</p>'}
-          <div style="${hasExisting ? 'margin-top:14px;border-top:1px solid var(--border);padding-top:12px' : ''}">
-            <strong style="font-size:0.875rem">Add Profile</strong>
-            <div class="form-row" style="margin-top:8px">
-              <div><label>Material</label>
-                <input id="pf-material" type="text" placeholder="e.g. Walnut"></div>
-              <div style="flex:1"><label>Profile Name</label>
-                <input id="pf-name" type="text" placeholder="e.g. 5mm stock"></div>
-              <div style="flex:2"><label>Description (optional)</label>
-                <input id="pf-desc" type="text"></div>
-              <div style="display:flex;align-items:flex-end">
+        <div class="card card-body mt-2">
+          ${famRows || '<p class="text-muted small mb-3">No profiles yet.</p>'}
+          <div class="${hasExisting ? 'mt-3 pt-3 border-top' : ''}">
+            <strong class="small">Add Profile</strong>
+            <div class="row g-2 align-items-end mt-1">
+              <div class="col-auto">
+                <label class="form-label small">Material</label>
+                <input class="form-control form-control-sm" id="pf-material" type="text" placeholder="e.g. Walnut">
+              </div>
+              <div class="col">
+                <label class="form-label small">Profile Name</label>
+                <input class="form-control form-control-sm" id="pf-name" type="text" placeholder="e.g. 5mm stock">
+              </div>
+              <div class="col">
+                <label class="form-label small">Description <span class="text-muted fw-normal">(optional)</span></label>
+                <input class="form-control form-control-sm" id="pf-desc" type="text">
+              </div>
+              <div class="col-auto">
                 <button class="btn btn-primary btn-sm" id="pf-add-btn">Add</button>
               </div>
             </div>
@@ -128,7 +124,7 @@ window.settingsInit = async function () {
       const mat  = document.getElementById('pf-material').value.trim();
       const name = document.getElementById('pf-name').value.trim();
       const desc = document.getElementById('pf-desc').value.trim();
-      if (!mat || !name) return showBanner('Material and profile name are required');
+      if (!mat || !name) return window.showToast('Material and profile name are required');
       try {
         await apiFetch('/api/families', {
           method: 'POST',
@@ -136,7 +132,7 @@ window.settingsInit = async function () {
           body: JSON.stringify({ material: mat, profile_name: name, description: desc || null }),
         });
         await loadFamilies();
-      } catch (e) { showBanner(e.message); }
+      } catch (e) { window.showToast(e.message); }
     };
   }
 
@@ -149,8 +145,8 @@ window.settingsInit = async function () {
       const row = e.target.closest('.profile-row');
       const fam = cachedFamilies.find(f => f.id == fid);
       row.innerHTML = `
-        <input type="text" id="rn-input-${fid}" value="${escHtml(fam?.profile_name ?? '')}"
-               style="flex:1;margin-right:4px">
+        <input class="form-control form-control-sm flex-grow-1" type="text" id="rn-input-${fid}"
+               value="${escHtml(fam?.profile_name ?? '')}">
         <button class="btn btn-primary btn-sm profile-rename-save" data-fid="${fid}">Save</button>
         <button class="btn btn-secondary btn-sm profile-rename-cancel" data-fid="${fid}">Cancel</button>`;
       document.getElementById(`rn-input-${fid}`)?.focus();
@@ -158,7 +154,7 @@ window.settingsInit = async function () {
     }
     if (e.target.classList.contains('profile-rename-save')) {
       const newName = document.getElementById(`rn-input-${fid}`)?.value.trim();
-      if (!newName) return showBanner('Name is required');
+      if (!newName) return window.showToast('Name is required');
       try {
         await apiFetch(`/api/families/${fid}`, {
           method: 'PUT',
@@ -167,7 +163,7 @@ window.settingsInit = async function () {
         });
         await loadFamilies();
         await loadData();
-      } catch (e) { showBanner(e.message); }
+      } catch (e) { window.showToast(e.message); }
       return;
     }
     if (e.target.classList.contains('profile-rename-cancel')) {
@@ -181,7 +177,7 @@ window.settingsInit = async function () {
         await apiFetch(`/api/families/${fid}`, { method: 'DELETE' });
         await loadFamilies();
         await loadData();
-      } catch (e) { showBanner(e.message); }
+      } catch (e) { window.showToast(e.message); }
     }
   });
 
@@ -203,58 +199,70 @@ window.settingsInit = async function () {
     const mat   = row?.material ?? '';
 
     formWrap.innerHTML = `
-      <div class="inline-form">
-        <h2>${title}${row
-          ? ` <small style="color:var(--text-muted);font-weight:normal;font-size:0.65em">&nbsp;#${row.id} &nbsp;${escHtml(row.material)} / ${row.operation}</small>`
+      <div class="card card-body mb-4">
+        <h2 class="h5 mb-1">${title}${row
+          ? ` <small class="text-muted fw-normal" style="font-size:0.65em">&nbsp;#${row.id} &nbsp;${escHtml(row.material)} / ${row.operation}</small>`
           : ''}</h2>
-        ${isImprove ? `<p style="color:var(--text-muted);font-size:0.875rem;margin-top:0">
-          Creates a new candidate from this setting. The confirmed setting will be archived.</p>` : ''}
-        <div class="form-row">
-          <div style="flex:1">
-            <label>Material <small title="Never laser PVC/vinyl">⚠</small></label>
+        ${isImprove ? `<p class="text-muted small mt-0 mb-3">Creates a new candidate from this setting. The confirmed setting will be archived.</p>` : '<div class="mb-2"></div>'}
+        <div class="row g-2 mb-2">
+          <div class="col-md">
+            <label class="form-label small">Material <small title="Never laser PVC/vinyl">⚠</small></label>
             ${isImprove
-              ? `<input type="text" value="${escHtml(mat)}" disabled style="opacity:0.6">`
-              : `<input id="f-material" type="text" value="${escHtml(mat)}" placeholder="e.g. Walnut">`}
+              ? `<input class="form-control form-control-sm" type="text" value="${escHtml(mat)}" disabled>`
+              : `<input class="form-control form-control-sm" id="f-material" type="text" value="${escHtml(mat)}" placeholder="e.g. Walnut">`}
           </div>
-          <div>
-            <label>Operation</label>
+          <div class="col-md-auto">
+            <label class="form-label small">Operation</label>
             ${isImprove
-              ? `<input type="text" value="${row.operation}" disabled style="opacity:0.6">`
-              : `<select id="f-operation">
+              ? `<input class="form-control form-control-sm" type="text" value="${row.operation}" disabled>`
+              : `<select class="form-select form-select-sm" id="f-operation">
                   <option value="engrave" ${row?.operation === 'engrave' ? 'selected' : ''}>Engrave</option>
                   <option value="score"   ${row?.operation === 'score'   ? 'selected' : ''}>Score</option>
                   <option value="cut"     ${row?.operation === 'cut'     ? 'selected' : ''}>Cut</option>
                 </select>`}
           </div>
-          <div>
-            <label>Profile</label>
-            <select id="f-family">${buildFamilyOptions(mat, row?.family_id)}</select>
+          <div class="col-md-auto">
+            <label class="form-label small">Profile</label>
+            <select class="form-select form-select-sm" id="f-family">${buildFamilyOptions(mat, row?.family_id)}</select>
           </div>
-          <div><label>Power %</label>
-            <input id="f-power" type="number" min="0" max="100" value="${row?.power ?? ''}"></div>
-          <div><label>Speed (mm/sec)</label>
-            <input id="f-speed" type="number" min="1" value="${row?.speed ?? ''}"></div>
-          <div><label>LPI</label>
-            <input id="f-lpi" type="number" min="1" value="${row?.lines_per_inch ?? ''}"></div>
-          <div><label>Passes</label>
-            <input id="f-passes" type="number" min="1" value="${row?.passes ?? 1}"></div>
-          <div><label>Focus Offset (mm)</label>
-            <input id="f-focus" type="number" step="0.5" value="${row?.focus_offset_mm ?? 0}"></div>
+          <div class="col-auto">
+            <label class="form-label small">Power %</label>
+            <input class="form-control form-control-sm" id="f-power" type="number" min="0" max="100" value="${row?.power ?? ''}" style="width:80px">
+          </div>
+          <div class="col-auto">
+            <label class="form-label small">Speed (mm/s)</label>
+            <input class="form-control form-control-sm" id="f-speed" type="number" min="1" value="${row?.speed ?? ''}" style="width:90px">
+          </div>
+          <div class="col-auto">
+            <label class="form-label small">LPI</label>
+            <input class="form-control form-control-sm" id="f-lpi" type="number" min="1" value="${row?.lines_per_inch ?? ''}" style="width:70px">
+          </div>
+          <div class="col-auto">
+            <label class="form-label small">Passes</label>
+            <input class="form-control form-control-sm" id="f-passes" type="number" min="1" value="${row?.passes ?? 1}" style="width:70px">
+          </div>
+          <div class="col-auto">
+            <label class="form-label small">Focus Offset (mm)</label>
+            <input class="form-control form-control-sm" id="f-focus" type="number" step="0.5" value="${row?.focus_offset_mm ?? 0}" style="width:90px">
+          </div>
         </div>
-        <div class="form-row">
-          <div style="flex:1"><label>Notes</label>
-            <input id="f-notes" type="text" value="${escHtml(row?.notes ?? '')}"></div>
+        <div class="row g-2 mb-3">
+          <div class="col-md">
+            <label class="form-label small">Notes</label>
+            <input class="form-control form-control-sm" id="f-notes" type="text" value="${escHtml(row?.notes ?? '')}">
+          </div>
           ${!isImprove ? `
-          <div><label>Role</label>
-            <select id="f-role">
+          <div class="col-md-auto">
+            <label class="form-label small">Role</label>
+            <select class="form-select form-select-sm" id="f-role">
               <option value="candidate" ${!row || row.role === 'candidate' ? 'selected' : ''}>Candidate</option>
               <option value="confirmed" ${row?.role === 'confirmed' ? 'selected' : ''}>Confirmed</option>
             </select>
           </div>` : ''}
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-primary" id="f-save">${isImprove ? 'Improve' : isEdit ? 'Save' : 'Create'}</button>
-          <button class="btn btn-secondary" id="f-cancel">Cancel</button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary btn-sm" id="f-save">${isImprove ? 'Improve' : isEdit ? 'Save' : 'Create'}</button>
+          <button class="btn btn-secondary btn-sm" id="f-cancel">Cancel</button>
         </div>
       </div>`;
 
@@ -312,27 +320,24 @@ window.settingsInit = async function () {
         formWrap.innerHTML = '';
         await loadMaterials();
         await loadData();
-      } catch (e) { showBanner(e.message); }
+      } catch (e) { window.showToast(e.message); }
     };
   }
 
-  // ── Summary view helpers ──────────────────────────────────────────
-  // ── Compact setting row (used in tree view) ──────────────────────
+  // ── Compact setting row (used in tree view) ───────────────────────
   function renderSettingRow(r) {
     const isArchived = r.role === 'archived';
     return `
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
-                  gap:6px;padding:5px 0;border-bottom:1px solid var(--border);
-                  opacity:${isArchived ? '0.45' : '1'}">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:0.875rem">
-          <span class="badge">${r.operation}</span>
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 border-bottom${isArchived ? ' opacity-50' : ''}">
+        <div class="d-flex align-items-center gap-2 flex-wrap small">
+          <span class="badge text-bg-secondary">${r.operation}</span>
           ${ROLE_BADGE[r.role]}
           ${renderLineage(r)}
           ${renderParams(r)}
-          ${r.notes ? `<span style="color:var(--text-muted);font-style:italic;font-size:0.8rem">${escHtml(r.notes)}</span>` : ''}
+          ${r.notes ? `<span class="text-muted fst-italic" style="font-size:0.8rem">${escHtml(r.notes)}</span>` : ''}
         </div>
         ${!isArchived ? `
-        <div style="display:flex;gap:4px">
+        <div class="d-flex gap-1">
           ${r.role === 'confirmed'
             ? `<button class="btn btn-primary btn-sm improve-btn" data-id="${r.id}">Improve</button>`
             : `<button class="btn btn-secondary btn-sm confirm-btn" data-id="${r.id}" title="Mark confirmed">✓</button>
@@ -345,7 +350,7 @@ window.settingsInit = async function () {
   // ── Tree summary view ─────────────────────────────────────────────
   function renderSummary(rows) {
     if (!rows.length) {
-      content.innerHTML = '<p style="color:var(--text-muted)">No settings found.</p>';
+      content.innerHTML = '<p class="text-muted">No settings found.</p>';
       return;
     }
 
@@ -366,7 +371,6 @@ window.settingsInit = async function () {
     const sortRows  = arr => [...arr].sort((a, b) =>
       (roleOrder[a.role] ?? 1) - (roleOrder[b.role] ?? 1) || a.operation.localeCompare(b.operation));
 
-    // Auto-expand when filtered to a single material
     const autoExpand = matSel.value;
 
     const html = Object.keys(matGroups).sort().map(mat => {
@@ -378,68 +382,59 @@ window.settingsInit = async function () {
       const matKey       = `mat_${mat.replace(/\W/g, '_')}`;
       const isOpen       = autoExpand === mat;
 
-      // Profile sub-groups (sorted by name)
       const profileHtml = Object.values(mg.profiles)
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(pg => `
-          <div style="margin:6px 0 6px 12px;padding-left:10px;border-left:2px solid var(--border)">
-            <div style="font-size:0.78rem;font-weight:600;text-transform:uppercase;
-                        letter-spacing:0.05em;color:var(--text-muted);margin-bottom:2px">
+          <div class="ms-3 ps-2 border-start my-2">
+            <div class="text-muted fw-bold text-uppercase mb-1" style="font-size:0.78rem;letter-spacing:0.05em">
               ${escHtml(pg.name)}
             </div>
             ${sortRows(pg.rows).map(r => renderSettingRow(r)).join('')}
           </div>`).join('');
 
-      // Ungrouped settings
       const ungroupedHtml = mg.ungrouped.length
-        ? (profileCount
-            ? `<div style="font-size:0.78rem;color:var(--text-muted);margin:8px 0 2px 12px">no profile</div>`
-            : '') +
+        ? (profileCount ? `<div class="text-muted ms-3 mt-2 mb-1" style="font-size:0.78rem">no profile</div>` : '') +
           sortRows(mg.ungrouped).map(r => renderSettingRow(r)).join('')
         : '';
 
       return `
-        <div style="border:1px solid var(--border);border-radius:6px;margin-bottom:4px;overflow:hidden">
-          <div class="mat-header" data-matkey="${matKey}"
-               style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;user-select:none">
-            <span class="mat-arrow" data-matkey="${matKey}"
-                  style="font-size:0.7rem;color:var(--text-muted);width:10px">${isOpen ? '▾' : '▶'}</span>
-            <strong>${escHtml(mat)}</strong>
-            <span style="font-size:0.8rem;color:var(--text-muted)">${summary}</span>
+        <div class="border rounded mb-1 overflow-hidden">
+          <div class="mat-header d-flex align-items-center gap-2 px-3 py-2 clickable" data-matkey="${matKey}">
+            <span class="mat-arrow text-muted" data-matkey="${matKey}" style="font-size:0.7rem;width:10px">${isOpen ? '▾' : '▶'}</span>
+            <strong class="small">${escHtml(mat)}</strong>
+            <span class="text-muted small">${summary}</span>
           </div>
-          <div class="mat-body" data-matkey="${matKey}"
-               style="display:${isOpen ? 'block' : 'none'};padding:4px 12px 10px;
-                      border-top:1px solid var(--border)">
+          <div class="mat-body px-3 pb-3 border-top${isOpen ? '' : ' d-none'}" data-matkey="${matKey}">
             ${profileHtml}${ungroupedHtml}
           </div>
         </div>`;
     }).join('');
 
-    content.innerHTML = html || '<p style="color:var(--text-muted)">No settings found.</p>';
+    content.innerHTML = html || '<p class="text-muted">No settings found.</p>';
   }
 
   // ── Flat table view ───────────────────────────────────────────────
   function renderTable(rows) {
-    if (!rows.length) { content.innerHTML = '<p style="color:var(--text-muted)">No settings found.</p>'; return; }
+    if (!rows.length) { content.innerHTML = '<p class="text-muted">No settings found.</p>'; return; }
     content.innerHTML = `
-      <div class="table-wrap">
-        <table>
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
           <thead><tr>
             <th>Material</th><th>Op</th><th>Profile</th><th>Role</th>
-            <th>Power</th><th>Speed</th><th>LPI</th><th>Passes</th><th>Focus</th><th>Notes</th><th>Actions</th>
+            <th>Power</th><th>Speed</th><th>LPI</th><th>Passes</th><th>Focus</th><th>Notes</th><th></th>
           </tr></thead>
           <tbody>
             ${rows.map(r => `
-              <tr style="opacity:${r.role === 'archived' ? '0.5' : '1'}">
+              <tr class="${r.role === 'archived' ? 'opacity-50' : ''}">
                 <td>${escHtml(r.material)}</td>
-                <td><span class="badge">${r.operation}</span></td>
-                <td style="color:var(--text-muted);font-size:0.85rem">${r.family_name ? escHtml(r.family_name) : '—'}</td>
+                <td><span class="badge text-bg-secondary">${r.operation}</span></td>
+                <td class="text-muted small">${r.family_name ? escHtml(r.family_name) : '—'}</td>
                 <td>${ROLE_BADGE[r.role]}</td>
                 <td>${r.power ?? '—'}</td><td>${r.speed ?? '—'}</td>
                 <td>${r.lines_per_inch ?? '—'}</td><td>${r.passes}</td>
                 <td>${r.focus_offset_mm}</td>
-                <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.notes ?? '')}</td>
-                <td style="white-space:nowrap">
+                <td class="text-nowrap" style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${escHtml(r.notes ?? '')}</td>
+                <td class="text-nowrap">
                   ${r.role === 'confirmed'
                     ? `<button class="btn btn-primary btn-sm improve-btn" data-id="${r.id}">Improve</button>`
                     : r.role === 'candidate'
@@ -466,7 +461,7 @@ window.settingsInit = async function () {
       if (sumCb.checked) renderSummary(rows);
       else renderTable(rows);
     } catch (e) {
-      content.innerHTML = `<div class="banner banner-error">${escHtml(e.message)}</div>`;
+      content.innerHTML = `<div class="alert alert-danger">${escHtml(e.message)}</div>`;
     }
   }
 
@@ -479,9 +474,9 @@ window.settingsInit = async function () {
       const body  = content.querySelector(`.mat-body[data-matkey="${key}"]`);
       const arrow = content.querySelector(`.mat-arrow[data-matkey="${key}"]`);
       if (body) {
-        const open = body.style.display !== 'none';
-        body.style.display  = open ? 'none' : 'block';
-        if (arrow) arrow.textContent = open ? '▶' : '▾';
+        const isHidden = body.classList.contains('d-none');
+        body.classList.toggle('d-none');
+        if (arrow) arrow.textContent = isHidden ? '▾' : '▶';
       }
       return;
     }
@@ -494,27 +489,27 @@ window.settingsInit = async function () {
         const row = await apiFetch(`/api/settings/${id}`);
         renderForm(row, 'improve');
         window.scrollTo(0, 0);
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
     }
     if (e.target.classList.contains('confirm-btn')) {
       try { await apiFetch(`/api/settings/${id}/confirm`, { method: 'PUT' }); await loadData(); }
-      catch (err) { showBanner(err.message); }
+      catch (err) { window.showToast(err.message); }
     }
     if (e.target.classList.contains('unconfirm-btn')) {
       try { await apiFetch(`/api/settings/${id}/unconfirm`, { method: 'PUT' }); await loadData(); }
-      catch (err) { showBanner(err.message); }
+      catch (err) { window.showToast(err.message); }
     }
     if (e.target.classList.contains('edit-btn')) {
       try {
         const row = await apiFetch(`/api/settings/${id}`);
         renderForm(row, 'edit');
         window.scrollTo(0, 0);
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
     }
     if (e.target.classList.contains('del-btn')) {
       if (!confirm('Delete this setting?')) return;
       try { await apiFetch(`/api/settings/${id}`, { method: 'DELETE' }); await loadData(); }
-      catch (err) { showBanner(err.message); }
+      catch (err) { window.showToast(err.message); }
     }
   });
 

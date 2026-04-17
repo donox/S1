@@ -1,6 +1,5 @@
 window.usersInit = async function () {
-  const banner = document.getElementById('users-banner');
-  const list   = document.getElementById('users-list');
+  const list = document.getElementById('users-list');
 
   async function apiFetch(url, opts) {
     const r = await fetch(url, opts);
@@ -9,35 +8,30 @@ window.usersInit = async function () {
     return data;
   }
 
-  function showBanner(msg, type = 'error') {
-    banner.innerHTML = `<div class="banner banner-${type}">${msg}</div>`;
-    if (type !== 'error') setTimeout(() => { banner.innerHTML = ''; }, 4000);
-  }
-
   function renderUsers(users) {
     if (!users.length) {
-      list.innerHTML = '<p style="color:var(--text-muted)">No users yet. Add one to get started.</p>';
+      list.innerHTML = '<p class="text-muted">No users yet. Add one to get started.</p>';
       return;
     }
     list.innerHTML = users.map(u => `
-      <div class="card" data-id="${u.id}" style="margin-bottom:10px"
+      <div class="card mb-2" data-id="${u.id}"
            data-projects="${u.project_count}" data-sessions="${u.session_count}">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="card-body py-2 d-flex justify-content-between align-items-center gap-3 flex-wrap">
           <div>
-            <div style="display:flex;align-items:center;gap:8px">
+            <div class="d-flex align-items-center gap-2">
               <strong id="user-name-${u.id}">${u.name}</strong>
-              ${u.is_default ? '<span class="badge" style="color:var(--success);border:1px solid var(--success)">default</span>' : ''}
+              ${u.is_default ? '<span class="badge text-bg-success">default</span>' : ''}
             </div>
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px">
+            <div class="text-muted mt-1" style="font-size:0.8rem">
               ${u.project_count} project${u.project_count !== 1 ? 's' : ''}
               &nbsp;·&nbsp;
               ${u.session_count} session${u.session_count !== 1 ? 's' : ''}
             </div>
           </div>
-          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap" id="user-actions-${u.id}">
+          <div class="d-flex gap-1 flex-shrink-0 flex-wrap" id="user-actions-${u.id}">
             ${!u.is_default ? `<button class="btn btn-secondary btn-sm set-default-user" data-id="${u.id}">Set default</button>` : ''}
             <button class="btn btn-secondary btn-sm rename-user" data-id="${u.id}">Rename</button>
-            <button class="btn btn-danger    btn-sm delete-user" data-id="${u.id}">Delete</button>
+            <button class="btn btn-danger btn-sm delete-user" data-id="${u.id}">Delete</button>
           </div>
         </div>
       </div>`).join('');
@@ -47,7 +41,7 @@ window.usersInit = async function () {
     try {
       renderUsers(await apiFetch('/api/users'));
     } catch (e) {
-      list.innerHTML = `<div class="banner banner-error">${e.message}</div>`;
+      list.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
     }
   }
 
@@ -57,8 +51,9 @@ window.usersInit = async function () {
     const name      = input.value.trim();
     const isDefault = document.getElementById('nu-default').checked;
     if (!name) {
-      input.style.borderColor = 'var(--accent)'; input.focus();
-      setTimeout(() => { input.style.borderColor = ''; }, 2500);
+      input.classList.add('is-invalid');
+      input.focus();
+      setTimeout(() => input.classList.remove('is-invalid'), 2500);
       return;
     }
     const btn = document.getElementById('btn-add-user');
@@ -70,9 +65,9 @@ window.usersInit = async function () {
       });
       input.value = '';
       document.getElementById('nu-default').checked = false;
-      showBanner('User added.', 'success');
+      window.showToast('User added.', 'success');
       await loadUsers();
-    } catch (e) { showBanner(e.message); }
+    } catch (e) { window.showToast(e.message); }
     finally { btn.disabled = false; }
   };
 
@@ -90,7 +85,7 @@ window.usersInit = async function () {
       try {
         await apiFetch(`/api/users/${id}/set-default`, { method: 'PUT' });
         await loadUsers();
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
     }
 
     // Rename — inline form
@@ -99,10 +94,9 @@ window.usersInit = async function () {
       const actionsDiv = document.getElementById(`user-actions-${id}`);
       const current    = nameEl.textContent.trim();
       actionsDiv.innerHTML = `
-        <input id="rename-input-${id}" type="text" value="${current}"
-          style="font-size:0.9rem;padding:4px 8px;border:1px solid var(--border);
-                 background:var(--surface2);color:var(--text);border-radius:4px;min-width:160px">
-        <button class="btn btn-primary   btn-sm rename-save"   data-id="${id}">Save</button>
+        <input class="form-control form-control-sm" id="rename-input-${id}" type="text"
+               value="${current}" style="min-width:160px">
+        <button class="btn btn-primary btn-sm rename-save" data-id="${id}">Save</button>
         <button class="btn btn-secondary btn-sm rename-cancel" data-id="${id}">✕</button>`;
       const inp = document.getElementById(`rename-input-${id}`);
       inp?.focus();
@@ -121,7 +115,7 @@ window.usersInit = async function () {
           body: JSON.stringify({ name: newName }),
         });
         await loadUsers();
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
     }
 
     if (e.target.classList.contains('rename-cancel')) {
@@ -135,20 +129,20 @@ window.usersInit = async function () {
       const sessN  = parseInt(card?.dataset.sessions  ?? '0', 10);
       const actionsDiv = document.getElementById(`user-actions-${id}`);
       const warning = (projN > 0 || sessN > 0)
-        ? `<span style="font-size:0.8rem;color:var(--accent2)">Owns ${projN} project(s) &amp; ${sessN} session(s) — ownership will be removed.</span>`
-        : `<span style="font-size:0.8rem;color:var(--text-muted)">Delete this user?</span>`;
+        ? `<span class="text-warning small">Owns ${projN} project(s) &amp; ${sessN} session(s) — ownership will be removed.</span>`
+        : `<span class="text-muted small">Delete this user?</span>`;
       actionsDiv.innerHTML = `
         ${warning}
-        <button class="btn btn-danger    btn-sm force-delete-user"  data-id="${id}">Confirm delete</button>
+        <button class="btn btn-danger btn-sm force-delete-user" data-id="${id}">Confirm delete</button>
         <button class="btn btn-secondary btn-sm cancel-delete-user" data-id="${id}">Cancel</button>`;
     }
 
     if (e.target.classList.contains('force-delete-user')) {
       try {
         await apiFetch(`/api/users/${id}?force=1`, { method: 'DELETE' });
-        showBanner('User deleted.', 'success');
+        window.showToast('User deleted.', 'success');
         await loadUsers();
-      } catch (err) { showBanner(err.message); }
+      } catch (err) { window.showToast(err.message); }
     }
 
     if (e.target.classList.contains('cancel-delete-user')) {

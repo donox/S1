@@ -1,3 +1,21 @@
+window.showToast = function(msg, type = 'error') {
+  const container = document.getElementById('toast-container');
+  const bsType = type === 'success' ? 'success' : type === 'error' ? 'danger' : 'secondary';
+  const el = document.createElement('div');
+  el.className = `toast align-items-center text-bg-${bsType} border-0`;
+  el.setAttribute('role', 'alert');
+  el.setAttribute('aria-live', 'assertive');
+  el.setAttribute('aria-atomic', 'true');
+  el.innerHTML = `<div class="d-flex">
+    <div class="toast-body">${msg}</div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+  </div>`;
+  container.appendChild(el);
+  const toast = new bootstrap.Toast(el, { delay: type === 'error' ? 8000 : 4000 });
+  toast.show();
+  el.addEventListener('hidden.bs.toast', () => el.remove());
+};
+
 const PAGES = {
   home:      { partial: '/pages/home.html',       module: '/js/home.js'      },
   projects:  { partial: '/pages/projects.html',   module: '/js/projects.js'  },
@@ -46,7 +64,7 @@ async function navigate(page, push = true) {
       if (window[`${page}Init`]) window[`${page}Init`](content);
     }
   } catch (e) {
-    content.innerHTML = `<div class="banner banner-error">Failed to load page: ${e.message}</div>`;
+    content.innerHTML = `<div class="alert alert-danger" role="alert">Failed to load page: ${e.message}</div>`;
   }
 }
 

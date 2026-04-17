@@ -1,33 +1,37 @@
-<h1>Docs</h1>
+<h1 class="mb-4">Docs</h1>
 
-<div class="filter-bar">
-  <div style="flex:1">
-    <label>Search</label>
-    <input id="docs-search" type="text" placeholder="Full-text search…">
+<div class="card card-body mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-md">
+      <label class="form-label small mb-1">Search</label>
+      <input class="form-control form-control-sm" id="docs-search" type="text" placeholder="Full-text search…">
+    </div>
+    <div class="col-auto">
+      <label class="form-label small mb-1">Section</label>
+      <select class="form-select form-select-sm" id="docs-section">
+        <option value="">All</option>
+        <option value="Overview">Overview</option>
+        <option value="Modes">Modes</option>
+        <option value="Operating Params">Operating Params</option>
+        <option value="Safety">Safety</option>
+        <option value="Techniques">Techniques</option>
+        <option value="File Management">File Management</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <label class="form-label small mb-1">Source</label>
+      <select class="form-select form-select-sm" id="docs-source">
+        <option value="">All</option>
+        <option value="personal">Personal</option>
+        <option value="xtool-official">xTool Official</option>
+        <option value="community">Community</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="col-auto align-self-end">
+      <button class="btn btn-primary btn-sm" id="docs-go">Search / Filter</button>
+    </div>
   </div>
-  <div>
-    <label>Section</label>
-    <select id="docs-section">
-      <option value="">All</option>
-      <option value="Overview">Overview</option>
-      <option value="Modes">Modes</option>
-      <option value="Operating Params">Operating Params</option>
-      <option value="Safety">Safety</option>
-      <option value="Techniques">Techniques</option>
-      <option value="File Management">File Management</option>
-    </select>
-  </div>
-  <div>
-    <label>Source</label>
-    <select id="docs-source">
-      <option value="">All</option>
-      <option value="personal">Personal</option>
-      <option value="xtool-official">xTool Official</option>
-      <option value="community">Community</option>
-      <option value="other">Other</option>
-    </select>
-  </div>
-  <button class="btn btn-primary btn-sm" id="docs-go">Search / Filter</button>
 </div>
 
 <div id="docs-results"></div>

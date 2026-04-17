@@ -1,7 +1,6 @@
 window.projectsInit = async function () {
   const list      = document.getElementById('projects-list');
   const formWrap  = document.getElementById('project-form-wrap');
-  const banner    = document.getElementById('projects-banner');
   const statusSel = document.getElementById('proj-status-filter');
 
   let cachedUsers = [];
@@ -15,19 +14,25 @@ window.projectsInit = async function () {
     documented:        'Photographed / documented',
   };
 
-  const STATUS_COLOR = { active: '#27ae60', paused: '#f5a623', complete: '#9a9aaa', abandoned: '#c0392b' };
+  const STATUS_BS = {
+    active:    'text-bg-success',
+    paused:    'text-bg-warning',
+    complete:  'text-bg-secondary',
+    abandoned: 'text-bg-danger',
+  };
+
+  const STATUS_OUTLINE = {
+    active:    'text-success border-success',
+    paused:    'text-warning border-warning',
+    complete:  'text-secondary border-secondary',
+    abandoned: 'text-danger border-danger',
+  };
 
   async function apiFetch(url, opts) {
     const r = await fetch(url, opts);
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || r.statusText);
     return data;
-  }
-
-  function showBanner(msg, type = 'error') {
-    // Errors are persistent — user must see them. Success messages auto-dismiss.
-    banner.innerHTML = `<div class="banner banner-${type}">${msg}</div>`;
-    if (type !== 'error') setTimeout(() => { banner.innerHTML = ''; }, 4000);
   }
 
   function milestoneProgress(milestones) {
@@ -47,69 +52,81 @@ window.projectsInit = async function () {
     const defaultUserId = cachedUsers.find(u => u.is_default)?.id ?? '';
 
     formWrap.innerHTML = `
-      <div class="inline-form" style="margin-bottom:20px">
-        <h2>${isEdit ? 'Edit Project' : 'New Project'}</h2>
-        <div class="form-row">
-          <div style="flex:2"><label>Name</label>
-            <input id="pf-name" type="text" value="${project?.name ?? ''}" placeholder="e.g. Walnut Coaster Set"></div>
-          <div><label>Status</label>
-            <select id="pf-status">
+      <div class="card card-body mb-4">
+        <h2 class="h5 mb-3">${isEdit ? 'Edit Project' : 'New Project'}</h2>
+        <div class="row g-2 mb-2">
+          <div class="col-md">
+            <label class="form-label small">Name</label>
+            <input class="form-control form-control-sm" id="pf-name" type="text"
+              value="${project?.name ?? ''}" placeholder="e.g. Walnut Coaster Set">
+          </div>
+          <div class="col-md-auto">
+            <label class="form-label small">Status</label>
+            <select class="form-select form-select-sm" id="pf-status">
               <option value="active"    ${project?.status==='active'   ?'selected':''}>Active</option>
               <option value="paused"    ${project?.status==='paused'   ?'selected':''}>Paused</option>
               <option value="complete"  ${project?.status==='complete' ?'selected':''}>Complete</option>
               <option value="abandoned" ${project?.status==='abandoned'?'selected':''}>Abandoned</option>
-            </select></div>
-          <div><label>Owner</label>
-            <select id="pf-owner">
+            </select>
+          </div>
+          <div class="col-md-auto">
+            <label class="form-label small">Owner</label>
+            <select class="form-select form-select-sm" id="pf-owner">
               <option value="">— None —</option>
               ${cachedUsers.map(u => `<option value="${u.id}" ${(project?.owner_id ?? defaultUserId) == u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
-            </select></div>
-        </div>
-        <div class="form-row">
-          <div style="flex:1"><label>Goal</label>
-            <textarea id="pf-goal" style="min-height:50px">${project?.goal ?? ''}</textarea></div>
-        </div>
-        ${isEdit ? `
-        <div style="margin-bottom:14px">
-          <label style="display:block;margin-bottom:8px">Milestones</label>
-          <div style="display:flex;flex-wrap:wrap;gap:10px">
-            ${Object.entries(MILESTONE_LABELS).map(([key, label]) => `
-              <label style="display:flex;align-items:center;gap:6px;font-size:0.875rem;color:var(--text)">
-                <input type="checkbox" data-milestone="${key}" ${m[key] ? 'checked' : ''}
-                  style="accent-color:var(--accent)">
-                ${label}
-              </label>`).join('')}
+            </select>
           </div>
         </div>
-        <div class="form-row">
-          <div style="flex:1"><label>Outcome notes</label>
-            <textarea id="pf-outcome" style="min-height:50px">${project?.outcome ?? ''}</textarea></div>
+        <div class="mb-2">
+          <label class="form-label small">Goal</label>
+          <textarea class="form-control form-control-sm" id="pf-goal" rows="2">${project?.goal ?? ''}</textarea>
+        </div>
+        ${isEdit ? `
+        <div class="mb-3">
+          <label class="form-label small d-block mb-2">Milestones</label>
+          <div class="d-flex flex-wrap gap-3">
+            ${Object.entries(MILESTONE_LABELS).map(([key, label]) => `
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="ms-${key}" data-milestone="${key}" ${m[key] ? 'checked' : ''}>
+                <label class="form-check-label small" for="ms-${key}">${label}</label>
+              </div>`).join('')}
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small">Outcome notes</label>
+          <textarea class="form-control form-control-sm" id="pf-outcome" rows="2">${project?.outcome ?? ''}</textarea>
         </div>` : ''}
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-primary" id="pf-save">${isEdit ? 'Save' : 'Create'}</button>
-          <button class="btn btn-secondary" id="pf-cancel">Cancel</button>
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-primary btn-sm" id="pf-save">${isEdit ? 'Save' : 'Create'}</button>
+          <button class="btn btn-secondary btn-sm" id="pf-cancel">Cancel</button>
         </div>
       </div>`;
 
     if (isEdit) {
-      list.style.display = 'none';
+      list.classList.add('d-none');
       formWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function closeForm() {
       formWrap.innerHTML = '';
-      list.style.display = '';
+      list.classList.remove('d-none');
     }
 
     document.getElementById('pf-cancel').onclick = () => { closeForm(); };
     document.getElementById('pf-save').onclick = async () => {
+      const nameInput = document.getElementById('pf-name');
       const payload = {
-        name:     document.getElementById('pf-name').value.trim(),
+        name:     nameInput.value.trim(),
         goal:     document.getElementById('pf-goal').value.trim() || null,
         status:   document.getElementById('pf-status').value,
         owner_id: +document.getElementById('pf-owner').value || null,
       };
-      if (!payload.name) { showBanner('Name is required.'); return; }
+      if (!payload.name) {
+        nameInput.classList.add('is-invalid');
+        window.showToast('Name is required.');
+        return;
+      }
+      nameInput.classList.remove('is-invalid');
 
       if (isEdit) {
         const milestones = {};
@@ -128,62 +145,60 @@ window.projectsInit = async function () {
         }
         closeForm();
         await loadData();
-      } catch (e) { showBanner(e.message); }
+      } catch (e) { window.showToast(e.message); }
     };
   }
 
   async function loadData() {
     const status = statusSel.value;
     try {
-      // Always fetch all for counts, then filter for display
       const all      = await apiFetch('/api/projects');
       const projects = status ? all.filter(p => p.status === status) : all;
 
       // Status count badges
       const counts = {};
       all.forEach(p => { counts[p.status] = (counts[p.status] || 0) + 1; });
-      const COLOR = { active: '#27ae60', paused: '#f5a623', complete: '#9a9aaa', abandoned: '#c0392b' };
       document.getElementById('proj-status-counts').innerHTML =
         Object.entries(counts).map(([s, n]) =>
-          `<span class="badge" style="color:${COLOR[s]};border:1px solid ${COLOR[s]};cursor:pointer" data-filter="${s}">${n} ${s}</span>`
-        ).join('') + (all.length ? `<span class="badge" style="cursor:pointer" data-filter="">all ${all.length}</span>` : '');
+          `<span class="badge border ${STATUS_OUTLINE[s] || 'text-secondary border-secondary'} clickable" data-filter="${s}">${n} ${s}</span>`
+        ).join('') + (all.length ? `<span class="badge border text-secondary border-secondary clickable" data-filter="">all ${all.length}</span>` : '');
 
       if (!projects.length) {
-        list.innerHTML = '<p style="color:var(--text-muted)">No projects found. Create one to get started.</p>';
+        list.innerHTML = '<p class="text-muted">No projects found. Create one to get started.</p>';
         return;
       }
 
       list.innerHTML = projects.map(p => {
         const prog = milestoneProgress(p.milestones);
-        const sessions = ''; // loaded on expand
         return `
-          <div class="card project-card" data-id="${p.id}" style="margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-              <div style="flex:1;min-width:0">
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                  <strong style="font-size:1rem">${p.name}</strong>
-                  <span class="badge" style="color:${STATUS_COLOR[p.status]}">${p.status}</span>
+          <div class="card mb-2 project-card" data-id="${p.id}">
+            <div class="card-body py-2">
+              <div class="d-flex justify-content-between align-items-start gap-3">
+                <div class="flex-grow-1 min-width-0">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <strong>${p.name}</strong>
+                    <span class="badge ${STATUS_BS[p.status] || 'text-bg-secondary'}">${p.status}</span>
+                  </div>
+                  ${p.goal ? `<div class="text-muted small mt-1">${p.goal}</div>` : ''}
+                  ${p.owner_name ? `<div class="text-muted" style="font-size:0.78rem">Owner: ${p.owner_name}</div>` : ''}
+                  <div class="mt-2">
+                    <div class="text-muted small mb-1">Milestones: ${prog.done}/${prog.total}</div>
+                    <div class="progress progress-thin" style="width:200px;max-width:100%">
+                      <div class="progress-bar bg-primary" style="width:${prog.pct}%"></div>
+                    </div>
+                  </div>
                 </div>
-                ${p.goal ? `<div style="color:var(--text-muted);font-size:0.85rem;margin-top:4px">${p.goal}</div>` : ''}
-                ${p.owner_name ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">Owner: ${p.owner_name}</div>` : ''}
-                <div style="margin-top:10px">
-                  <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">
-                    Milestones: ${prog.done}/${prog.total}
-                  </div>
-                  <div style="background:var(--border);border-radius:4px;height:6px;width:200px;max-width:100%">
-                    <div style="background:var(--accent);width:${prog.pct}%;height:6px;border-radius:4px;transition:width 0.3s"></div>
-                  </div>
+                <div class="d-flex gap-1 flex-shrink-0">
+                  <button class="btn btn-secondary btn-sm edit-proj" data-id="${p.id}">Edit</button>
+                  <button class="btn btn-secondary btn-sm expand-proj" data-id="${p.id}">Details ▾</button>
+                  <button class="btn btn-danger btn-sm del-proj" data-id="${p.id}">Del</button>
                 </div>
               </div>
-              <div style="display:flex;gap:6px;flex-shrink:0">
-                <button class="btn btn-secondary btn-sm edit-proj" data-id="${p.id}">Edit</button>
-                <button class="btn btn-secondary btn-sm expand-proj" data-id="${p.id}">Details ▾</button>
-                <button class="btn btn-danger btn-sm del-proj" data-id="${p.id}">Del</button>
-              </div>
+              <div class="proj-detail d-none mt-3 pt-3 border-top" data-id="${p.id}"></div>
             </div>
-            <div class="proj-detail" data-id="${p.id}" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px"></div>
           </div>`;
       }).join('');
+
       // Auto-expand a project when navigated from home page
       const autoId = window._autoExpandProjectId;
       if (autoId) {
@@ -198,7 +213,7 @@ window.projectsInit = async function () {
         }
       }
     } catch (e) {
-      list.innerHTML = `<div class="banner banner-error">${e.message}</div>`;
+      list.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
     }
   }
 
@@ -207,37 +222,37 @@ window.projectsInit = async function () {
       const p = await apiFetch(`/api/projects/${projectId}`);
       const m = typeof p.milestones === 'string' ? JSON.parse(p.milestones) : p.milestones;
 
+      const OUTCOME_CLASS = { success: 'text-success', partial: 'text-warning', failed: 'text-danger' };
+
       detailEl.innerHTML = `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-          <div>
-            <h3>Milestones</h3>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <h3 class="h6 fw-semibold mb-2">Milestones</h3>
             ${Object.entries(MILESTONE_LABELS).map(([key, label]) => `
-              <div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:0.875rem">
-                <span style="color:${m[key] ? 'var(--success)' : 'var(--border)'}">
-                  ${m[key] ? '✓' : '○'}
-                </span>
-                <span style="color:${m[key] ? 'var(--text)' : 'var(--text-muted)'}">${label}</span>
+              <div class="d-flex align-items-center gap-2 py-1 small">
+                <span class="${m[key] ? 'text-success' : 'text-muted'}">${m[key] ? '✓' : '○'}</span>
+                <span class="${m[key] ? '' : 'text-muted'}">${label}</span>
               </div>`).join('')}
           </div>
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <h3 style="margin:0">Sessions (${p.sessions.length})</h3>
+          <div class="col-md-6">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h3 class="h6 fw-semibold mb-0">Sessions (${p.sessions.length})</h3>
               ${p.sessions.length ? `<button class="btn btn-secondary btn-sm proj-go-sessions" data-project-id="${p.id}">View all →</button>` : ''}
             </div>
             ${p.sessions.length ? p.sessions.slice(0, 5).map(s => `
-              <div style="font-size:0.8rem;padding:4px 0;border-bottom:1px solid var(--border)">
-                <span style="color:var(--text-muted)">${s.job_date}</span>
-                <span class="badge" style="margin-left:4px">${s.status}</span>
-                ${s.material ? ` · ${s.material}` : ''}
-                ${s.operation ? ` · <span class="badge">${s.operation}</span>` : ''}
-                ${s.outcome ? ` · <span style="color:${s.outcome==='success'?'var(--success)':'var(--accent)'}">${s.outcome}</span>` : ''}
-              </div>`).join('') + (p.sessions.length > 5 ? `<div style="font-size:0.75rem;color:var(--text-muted);padding-top:4px">+ ${p.sessions.length-5} more</div>` : '')
-            : '<p style="color:var(--text-muted);font-size:0.85rem">No sessions yet.</p>'}
+              <div class="d-flex align-items-center gap-1 py-1 border-bottom small flex-wrap">
+                <span class="text-muted">${s.job_date}</span>
+                <span class="badge text-bg-secondary ms-1">${s.status}</span>
+                ${s.material ? `<span class="text-muted">· ${s.material}</span>` : ''}
+                ${s.operation ? `<span class="badge text-bg-secondary">${s.operation}</span>` : ''}
+                ${s.outcome ? `<span class="${OUTCOME_CLASS[s.outcome] || 'text-muted'}">${s.outcome}</span>` : ''}
+              </div>`).join('') + (p.sessions.length > 5 ? `<div class="text-muted pt-1" style="font-size:0.75rem">+ ${p.sessions.length-5} more</div>` : '')
+            : '<p class="text-muted small">No sessions yet.</p>'}
           </div>
         </div>
-        ${p.outcome ? `<div style="margin-top:14px"><strong style="font-size:0.85rem">Outcome:</strong> <span style="font-size:0.875rem;color:var(--text-muted)">${p.outcome}</span></div>` : ''}`;
+        ${p.outcome ? `<div class="mt-3"><span class="small fw-semibold">Outcome:</span> <span class="text-muted small">${p.outcome}</span></div>` : ''}`;
     } catch (e) {
-      detailEl.innerHTML = `<div class="banner banner-error">${e.message}</div>`;
+      detailEl.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
     }
   }
 
@@ -273,27 +288,28 @@ window.projectsInit = async function () {
 
     if (e.target.classList.contains('edit-proj')) {
       try { const p = await apiFetch(`/api/projects/${id}`); renderForm(p); }
-      catch (err) { showBanner(err.message); }
+      catch (err) { window.showToast(err.message); }
     }
 
     if (e.target.classList.contains('del-proj')) {
       if (!confirm('Delete this project? Sessions will be detached but not deleted.')) return;
       try { await apiFetch(`/api/projects/${id}`, { method: 'DELETE' }); await loadData(); }
-      catch (err) { showBanner(err.message); }
+      catch (err) { window.showToast(err.message); }
     }
 
     if (e.target.classList.contains('expand-proj')) {
       const detail = list.querySelector(`.proj-detail[data-id="${id}"]`);
-      if (detail.style.display === 'none') {
-        detail.style.display = 'block';
+      const isHidden = detail.classList.contains('d-none');
+      if (isHidden) {
+        detail.classList.remove('d-none');
         e.target.textContent = 'Details ▴';
         if (!detail.dataset.loaded) {
-          detail.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">Loading…</p>';
+          detail.innerHTML = '<p class="text-muted small">Loading…</p>';
           await loadDetail(id, detail);
           detail.dataset.loaded = '1';
         }
       } else {
-        detail.style.display = 'none';
+        detail.classList.add('d-none');
         e.target.textContent = 'Details ▾';
       }
     }
