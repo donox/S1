@@ -103,16 +103,58 @@ window.docsInit = async function () {
           ▶ Page Clips ${count ? `<span class="badge text-bg-warning ms-1">${count} pending</span>` : ''}
         </summary>
         <div class="card card-body mb-3">
-          <p class="small text-muted mb-2">
-            Drag this to your bookmarks bar, then click it on any page to clip it here for review:
-            <a class="btn btn-secondary btn-sm ms-2"
-               href="${bookmarklet}">📎 Clip to xTool Guide</a>
-          </p>
+          <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+            <span class="small text-muted">Bookmarklet (auto-clips any page):</span>
+            <a class="btn btn-secondary btn-sm" href="${bookmarklet}">📎 Clip to xTool Guide</a>
+            <span class="small text-muted">or paste text manually:</span>
+            <button class="btn btn-outline-secondary btn-sm" id="paste-clip-toggle">Paste text…</button>
+          </div>
+          <div id="paste-clip-form" class="d-none mb-3 border rounded p-3">
+            <div class="row g-2 mb-2">
+              <div class="col-md">
+                <input class="form-control form-control-sm" id="paste-title" placeholder="Title (optional)">
+              </div>
+              <div class="col-md">
+                <input class="form-control form-control-sm" id="paste-url" placeholder="Source URL (optional)">
+              </div>
+            </div>
+            <textarea class="form-control form-control-sm mb-2" id="paste-body" rows="6"
+                      placeholder="Paste copied text here…"></textarea>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary btn-sm" id="paste-clip-save">Add to Clips</button>
+              <button class="btn btn-secondary btn-sm" id="paste-clip-cancel">Cancel</button>
+            </div>
+          </div>
           <div id="candidates-list">
             ${count ? '' : '<p class="text-muted small mb-0">No clips pending.</p>'}
           </div>
         </div>
       </details>`;
+
+    // Wire paste form
+    const pasteForm   = document.getElementById('paste-clip-form');
+    const pasteToggle = document.getElementById('paste-clip-toggle');
+    pasteToggle.onclick = () => pasteForm.classList.toggle('d-none');
+    document.getElementById('paste-clip-cancel').onclick = () => pasteForm.classList.add('d-none');
+    document.getElementById('paste-clip-save').onclick = async () => {
+      const raw_text = document.getElementById('paste-body').value.trim();
+      if (!raw_text) { window.showToast('Paste some text first.'); return; }
+      const payload = {
+        raw_text,
+        title: document.getElementById('paste-title').value.trim() || null,
+        url:   document.getElementById('paste-url').value.trim()   || null,
+      };
+      const r = await fetch('/api/docs/candidates', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (r.ok) {
+        window.showToast('Clip added.', 'success');
+        await loadCandidates();
+      } else {
+        window.showToast('Failed to save clip.');
+      }
+    };
 
     if (!count) return;
 
