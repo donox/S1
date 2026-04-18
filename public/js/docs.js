@@ -92,6 +92,45 @@ window.docsInit = async function () {
 
   const SECTIONS = ['Overview','Modes','Operating Params','Safety','Techniques','File Management'];
 
+  const CLIP_SOURCES = [
+    {
+      label: 'xTool Official',
+      links: [
+        { title: 'xTool S1 product page & specs',             url: 'https://www.xtool.com/products/xtool-s1-laser-engraver' },
+        { title: 'xTool Learning Center',                     url: 'https://www.xtool.com/pages/learning' },
+        { title: 'xTool blog — tips & projects',              url: 'https://www.xtool.com/blogs/news' },
+        { title: 'xTool YouTube channel',                     url: 'https://www.youtube.com/@xTool' },
+      ],
+    },
+    {
+      label: 'Community — wood engraving & settings',
+      links: [
+        { title: 'r/diodeLasers — Reddit',                    url: 'https://www.reddit.com/r/diodeLasers/' },
+        { title: 'r/lasercutting — Reddit',                   url: 'https://www.reddit.com/r/lasercutting/' },
+        { title: 'Diode Laser Nation — YouTube (settings, tips)', url: 'https://www.youtube.com/@DiodeLaserNation' },
+        { title: 'Laser Everything — YouTube',                url: 'https://www.youtube.com/@LaserEverything' },
+        { title: 'Makers Nook — YouTube (xTool focused)',     url: 'https://www.youtube.com/@MakersNook' },
+        { title: 'Diode Laser Nation — website',              url: 'https://diodelaernation.com' },
+      ],
+    },
+    {
+      label: 'Techniques — wood prep & finishing',
+      links: [
+        { title: 'Wood finishing for laser — Woodworkers Guild', url: 'https://www.wwgoa.com/article/laser-engraving-wood/' },
+        { title: 'Masking tape for clean edges — common technique', url: 'https://www.reddit.com/r/lasercutting/search/?q=masking+tape+wood' },
+        { title: 'Baking soda pre-treatment — dark engraving',  url: 'https://www.reddit.com/r/diodeLasers/search/?q=baking+soda' },
+      ],
+    },
+    {
+      label: 'Software & files',
+      links: [
+        { title: 'LightBurn documentation',                   url: 'https://docs.lightburnsoftware.com' },
+        { title: 'xTool Creative Space (XCS) help center',    url: 'https://support.xtool.com/hc/en-us' },
+        { title: 'Inkscape tutorials (vectorization)',         url: 'https://inkscape.org/learn/tutorials/' },
+      ],
+    },
+  ];
+
   async function loadCandidates() {
     const rows = await fetch('/api/docs/candidates').then(r => r.json()).catch(() => []);
     const count = rows.length;
@@ -103,12 +142,16 @@ window.docsInit = async function () {
           ▶ Page Clips ${count ? `<span class="badge text-bg-warning ms-1">${count} pending</span>` : ''}
         </summary>
         <div class="card card-body mb-3">
+
           <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
             <span class="small text-muted">Bookmarklet (auto-clips any page):</span>
             <a class="btn btn-secondary btn-sm" href="${bookmarklet}">📎 Clip to xTool Guide</a>
             <span class="small text-muted">or paste text manually:</span>
             <button class="btn btn-outline-secondary btn-sm" id="paste-clip-toggle">Paste text…</button>
+            <button class="btn btn-outline-info btn-sm ms-auto" id="clip-help-btn"
+                    data-bs-toggle="modal" data-bs-target="#clipHelpModal">? How to clip</button>
           </div>
+
           <div id="paste-clip-form" class="d-none mb-3 border rounded p-3">
             <div class="row g-2 mb-2">
               <div class="col-md">
@@ -125,11 +168,104 @@ window.docsInit = async function () {
               <button class="btn btn-secondary btn-sm" id="paste-clip-cancel">Cancel</button>
             </div>
           </div>
+
+          <details class="mb-3">
+            <summary class="text-muted small clickable" style="list-style:none;user-select:none">
+              ▶ Suggested sources to explore
+            </summary>
+            <div class="mt-2">
+              ${CLIP_SOURCES.map(group => `
+                <div class="mb-2">
+                  <div class="text-muted small fw-semibold mb-1">${group.label}</div>
+                  ${group.links.map(lk => `
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <a href="${lk.url}" target="_blank" rel="noopener"
+                         class="small text-truncate flex-grow-1" style="max-width:480px"
+                         title="${lk.url}">${lk.title}</a>
+                      <button class="btn btn-outline-secondary btn-sm py-0 px-1 copy-url-btn flex-shrink-0"
+                              style="font-size:0.7rem" data-url="${lk.url}">Copy URL</button>
+                    </div>`).join('')}
+                </div>`).join('')}
+            </div>
+          </details>
+
           <div id="candidates-list">
             ${count ? '' : '<p class="text-muted small mb-0">No clips pending.</p>'}
           </div>
         </div>
       </details>`;
+
+    // Help modal — inject once
+    if (!document.getElementById('clipHelpModal')) {
+      document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal fade" id="clipHelpModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">How to clip pages into your Docs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body small">
+                <h6>Goal</h6>
+                <p>Pull useful tips, techniques, or settings from the web into your local guide so
+                   they appear in keyword and semantic searches and in "Relevant docs" when you start
+                   a session.</p>
+
+                <h6>Method 1 — Bookmarklet (works on most sites)</h6>
+                <ol>
+                  <li>Drag the <strong>📎 Clip to xTool Guide</strong> button to your browser bookmarks bar
+                      (do this once).</li>
+                  <li>Navigate to the page you want to save.</li>
+                  <li>Click the bookmark — an alert confirms the clip was saved.</li>
+                  <li>Return here; the clip appears below for review.</li>
+                </ol>
+                <p class="text-warning-emphasis">Some sites (xTool, Facebook, etc.) block the
+                   bookmarklet. Use Method 2 for those.</p>
+
+                <h6>Method 2 — Copy / Paste</h6>
+                <ol>
+                  <li>On the source page, select all the useful text and copy it
+                      (<kbd>Ctrl+A</kbd> / <kbd>Ctrl+C</kbd>, or select a section manually).</li>
+                  <li>Click <strong>Paste text…</strong> above.</li>
+                  <li>Paste into the text area. Optionally fill in a title and the source URL.</li>
+                  <li>Click <strong>Add to Clips</strong>.</li>
+                </ol>
+                <p>LibreOffice is fine as an intermediate step if you want to clean the text up
+                   before pasting — just paste from the document into the form here.</p>
+
+                <h6>Reviewing a clip</h6>
+                <ol>
+                  <li><strong>Preview</strong> — shows the raw captured text so you can decide if
+                      it's worth keeping.</li>
+                  <li><strong>Import…</strong> — opens a form to set Section, Title, Source, body
+                      text (trim / edit), and tags, then saves it as a searchable doc entry.</li>
+                  <li><strong>Discard</strong> — deletes the clip without importing.</li>
+                </ol>
+                <p>After import, the entry is embedded (if Ollama is running) and will appear in
+                   semantic searches and in session "Relevant docs" suggestions.</p>
+
+                <h6>Where to look</h6>
+                <p>See the <strong>Suggested sources</strong> list in the clips panel for curated
+                   starting points. Open a link, read the page, clip what's useful.</p>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>`);
+    }
+
+    // Copy-URL buttons in sources list
+    candidatesWrap.querySelectorAll('.copy-url-btn').forEach(btn => {
+      btn.onclick = () => {
+        navigator.clipboard.writeText(btn.dataset.url).then(() => {
+          const orig = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = orig; }, 1500);
+        });
+      };
+    });
 
     // Wire paste form
     const pasteForm   = document.getElementById('paste-clip-form');
