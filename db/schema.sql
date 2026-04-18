@@ -180,6 +180,14 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS doc_candidates (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  title      TEXT NOT NULL,
+  url        TEXT,
+  raw_text   TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS session_users (
   session_id INTEGER NOT NULL REFERENCES usage_log(id) ON DELETE CASCADE,
   user_id    INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,

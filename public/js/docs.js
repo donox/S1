@@ -84,6 +84,147 @@ window.docsInit = async function () {
   document.getElementById('docs-go').onclick = load;
   searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
 
+  // ── Candidates ────────────────────────────────────────────────────
+  const candidatesWrap = document.getElementById('doc-candidates-wrap');
+
+  // Bookmarklet href — posts page title, url, and body text to local server
+  const bookmarklet = `javascript:(()=>{const t=document.title,u=location.href,x=document.body.innerText;fetch('http://localhost:3000/api/docs/candidates',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:t,url:u,raw_text:x})}).then(r=>r.json()).then(d=>alert('Clipped! id='+d.id)).catch(()=>alert('Clip failed — is the xTool app running?'));})();`;
+
+  const SECTIONS = ['Overview','Modes','Operating Params','Safety','Techniques','File Management'];
+
+  async function loadCandidates() {
+    const rows = await fetch('/api/docs/candidates').then(r => r.json()).catch(() => []);
+    const count = rows.length;
+
+    candidatesWrap.innerHTML = `
+      <details ${count ? 'open' : ''}>
+        <summary class="text-muted small fw-bold text-uppercase clickable mb-2"
+                 style="letter-spacing:0.06em;list-style:none;padding:6px 0;user-select:none">
+          ▶ Page Clips ${count ? `<span class="badge text-bg-warning ms-1">${count} pending</span>` : ''}
+        </summary>
+        <div class="card card-body mb-3">
+          <p class="small text-muted mb-2">
+            Drag this to your bookmarks bar, then click it on any page to clip it here for review:
+            <a class="btn btn-secondary btn-sm ms-2"
+               href="${bookmarklet}">📎 Clip to xTool Guide</a>
+          </p>
+          <div id="candidates-list">
+            ${count ? '' : '<p class="text-muted small mb-0">No clips pending.</p>'}
+          </div>
+        </div>
+      </details>`;
+
+    if (!count) return;
+
+    const listEl = document.getElementById('candidates-list');
+    listEl.innerHTML = rows.map(c => `
+      <div class="border rounded p-2 mb-2 candidate-card" data-id="${c.id}">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+          <div>
+            <div class="fw-semibold small">${c.title}</div>
+            ${c.url ? `<div class="text-muted" style="font-size:0.75rem">${c.url}</div>` : ''}
+          </div>
+          <div class="d-flex gap-1 flex-shrink-0">
+            <button class="btn btn-primary btn-sm cand-import" data-id="${c.id}">Import…</button>
+            <button class="btn btn-secondary btn-sm cand-preview" data-id="${c.id}">Preview</button>
+            <button class="btn btn-danger btn-sm cand-discard" data-id="${c.id}">Discard</button>
+          </div>
+        </div>
+        <div class="cand-preview-body d-none small text-muted border-top pt-2 mt-1"
+             style="max-height:200px;overflow-y:auto;white-space:pre-wrap">${c.raw_text.slice(0, 2000)}${c.raw_text.length > 2000 ? '\n…' : ''}</div>
+        <div class="cand-import-form d-none mt-2 pt-2 border-top"></div>
+      </div>`).join('');
+
+    listEl.addEventListener('click', async e => {
+      const id   = e.target.dataset.id;
+      const card = e.target.closest('.candidate-card');
+      if (!id || !card) return;
+
+      if (e.target.classList.contains('cand-preview')) {
+        card.querySelector('.cand-preview-body').classList.toggle('d-none');
+        return;
+      }
+
+      if (e.target.classList.contains('cand-discard')) {
+        if (!confirm('Discard this clip?')) return;
+        await fetch(`/api/docs/candidates/${id}`, { method: 'DELETE' });
+        await loadCandidates();
+        return;
+      }
+
+      if (e.target.classList.contains('cand-import')) {
+        const formEl = card.querySelector('.cand-import-form');
+        if (!formEl.classList.contains('d-none')) { formEl.classList.add('d-none'); return; }
+        const raw = rows.find(r => r.id == id);
+        formEl.classList.remove('d-none');
+        formEl.innerHTML = `
+          <div class="row g-2 mb-2">
+            <div class="col-md-auto">
+              <label class="form-label small">Section</label>
+              <select class="form-select form-select-sm" id="ci-section-${id}">
+                ${SECTIONS.map(s => `<option>${s}</option>`).join('')}
+              </select>
+            </div>
+            <div class="col-md">
+              <label class="form-label small">Title</label>
+              <input class="form-control form-control-sm" id="ci-title-${id}"
+                     value="${(raw?.title ?? '').replace(/"/g, '&quot;')}">
+            </div>
+            <div class="col-md-auto">
+              <label class="form-label small">Source</label>
+              <select class="form-select form-select-sm" id="ci-source-${id}">
+                <option value="community" selected>Community</option>
+                <option value="xtool-official">xTool Official</option>
+                <option value="personal">Personal</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Body <span class="text-muted fw-normal">(edit/trim the raw text)</span></label>
+            <textarea class="form-control form-control-sm" id="ci-body-${id}" rows="6">${(raw?.raw_text ?? '').slice(0, 3000)}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Tags <span class="text-muted fw-normal">(comma-separated)</span></label>
+            <input class="form-control form-control-sm" id="ci-tags-${id}" placeholder="e.g. wood,technique,char">
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary btn-sm cand-import-save" data-id="${id}">Import into Docs</button>
+            <button class="btn btn-secondary btn-sm" onclick="this.closest('.cand-import-form').classList.add('d-none')">Cancel</button>
+          </div>`;
+        return;
+      }
+
+      if (e.target.classList.contains('cand-import-save')) {
+        const payload = {
+          section: document.getElementById(`ci-section-${id}`).value,
+          title:   document.getElementById(`ci-title-${id}`).value.trim(),
+          body:    document.getElementById(`ci-body-${id}`).value.trim(),
+          tags:    document.getElementById(`ci-tags-${id}`).value.trim() || null,
+          source:  document.getElementById(`ci-source-${id}`).value,
+        };
+        if (!payload.title || !payload.body) { window.showToast('Title and body are required.'); return; }
+        const btn = e.target;
+        btn.disabled = true; btn.textContent = 'Importing…';
+        try {
+          const r = await fetch(`/api/docs/candidates/${id}/import`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.error);
+          window.showToast(`Imported as doc #${data.id}${data.embedded ? ' (embedded)' : ''}`, 'success');
+          await loadCandidates();
+        } catch (err) {
+          window.showToast(err.message);
+          btn.disabled = false; btn.textContent = 'Import into Docs';
+        }
+      }
+    });
+  }
+
+  await loadCandidates();
+
   // ── Semantic search ───────────────────────────────────────────────
   const semanticInput  = document.getElementById('docs-semantic');
   const semanticStatus = document.getElementById('docs-semantic-status');
